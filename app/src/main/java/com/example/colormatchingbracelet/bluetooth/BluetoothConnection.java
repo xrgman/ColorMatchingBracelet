@@ -1,54 +1,48 @@
 package com.example.colormatchingbracelet.bluetooth;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.os.ParcelUuid;
 import android.util.Log;
-
-import androidx.core.app.ActivityCompat;
 
 import com.example.colormatchingbracelet.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class BluetoothConnection {
     public static ParcelUuid braceletUUID = ParcelUuid.fromString("1cf4fab1-d642-4153-a6f2-bf40db8d6f73");
     public static String braceletName = "Color Matching Bracelet";
 
+    private static BluetoothConnectionCallback connectionCallback;
+    private static BluetoothAdapter bluetoothAdapter;
     private static BluetoothLeScanner bluetoothScanner;
+    private static BluetoothGatt bluetoothGatt;
     private static ProgressDialog scanDialog;
 
     private static boolean deviceFound = false;
-    private boolean isConnected;
-
-    public BluetoothConnection() {
-        isConnected = false;
-    }
 
     @SuppressLint("MissingPermission")
-    public static void startScan(Context context) {
-        BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-        BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
+    public static void startScan(Context context, BluetoothConnectionCallback connCallback) {
+        connectionCallback = connCallback;
 
-        //Checking if adapter is enabled and if not enable it:
-        if (!bluetoothAdapter.isEnabled()) {
-            if (!bluetoothAdapter.enable()) {
-                //Do something
-            }
-        }
+        BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        bluetoothAdapter = bluetoothManager.getAdapter();
+
+
 
         //Create scan filter for bracelet UUID:
         List<ScanFilter> filters = new ArrayList<>();
@@ -68,6 +62,9 @@ public class BluetoothConnection {
 
         //Creating scanner and scan for bracelet:
         bluetoothScanner = bluetoothAdapter.getBluetoothLeScanner();
+
+        //Resetting device found and starting scan:
+        deviceFound = false;
 
         bluetoothScanner.startScan(filters, scanSettings, scanCallback);
 
@@ -100,13 +97,12 @@ public class BluetoothConnection {
             if(!deviceFound) {
                 deviceFound = true;
 
-
+                //Grabbing bluetooth device and calling callback:
                 BluetoothDevice device = result.getDevice();
 
+                connectionCallback.onDeviceFound(device.getAddress());
 
                 super.onScanResult(callbackType, result);
-
-                stopScan();
             }
         }
 
@@ -115,8 +111,4 @@ public class BluetoothConnection {
             super.onScanFailed(errorCode);
         }
     };
-
-
-
-
 }

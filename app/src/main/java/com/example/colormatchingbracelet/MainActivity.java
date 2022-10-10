@@ -1,14 +1,17 @@
 package com.example.colormatchingbracelet;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 
+import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.google.android.material.navigation.NavigationView;
 
 import androidx.core.app.ActivityCompat;
@@ -27,12 +30,30 @@ import com.example.colormatchingbracelet.bluetooth.BluetoothService;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements IBluetoothService {
 
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityMainBinding binding;
 
-    private BluetoothService bluetoothLeService;
+    //Setting up bluetoothService:
+    private BluetoothService bluetoothService;
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder service) {
+            bluetoothService = ((BluetoothService.LocalBinder) service).getService();
+
+            if(bluetoothService != null) {
+                if(!bluetoothService.initialize()) {
+                    finish(); //Stop for now :)
+                }
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            bluetoothService = null;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,10 +68,10 @@ public class MainActivity extends AppCompatActivity {
         NavigationView navigationView = binding.navView;
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        mAppBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.nav_home, R.id.nav_settings)
+        mAppBarConfiguration = new AppBarConfiguration.Builder(R.id.nav_home, R.id.nav_settings)
                 .setOpenableLayout(drawer)
                 .build();
+
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main2);
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
@@ -58,7 +79,25 @@ public class MainActivity extends AppCompatActivity {
         //Requesting permissions:
         requestMissingPermissions();
 
-        initService();
+        //Setting up service:
+        Intent gattServiceIntent = new Intent(this, BluetoothService.class);
+        bindService(gattServiceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        registerReceiver(gattUpdateReceiver, makeGattUpdateIntentFilter());
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        unregisterReceiver(gattUpdateReceiver);
     }
 
     @Override
@@ -66,6 +105,21 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main2);
         return NavigationUI.navigateUp(navController, mAppBarConfiguration) || super.onSupportNavigateUp();
     }
+
+    private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            switch (action) {
+                case BluetoothService.ACTION_GATT_CONNECTED:
+                case BluetoothService.ACTION_GATT_DISCONNECTED:
+                case BluetoothService.ACTION_GATT_SERVICES_DISCOVERED:
+                default:
+                    break;
+            }
+        }
+    };
 
     /**
      * This function makes sure all needed permissions are requested:
@@ -93,36 +147,39 @@ public class MainActivity extends AppCompatActivity {
             missingPermissions.add(Manifest.permission.BLUETOOTH_SCAN);
         }
 
-        //Coarse location:
-//        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//            missingPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-//        }
-
+        //Asking permissions:
         if(missingPermissions.size() > 0) {
             ActivityCompat.requestPermissions(this, missingPermissions.toArray(new String[missingPermissions.size()]), 1);
         }
     }
 
-    private void initService() {
-        if (bluetoothLeService == null) {
-            Intent gattServiceIntent = new Intent(this, BluetoothService.class);
-            bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
-        }
+
+    @Override
+    public boolean connectToDevice(String address) {
+        return bluetoothService.connectToDevice(address);
     }
 
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+    @Override
+    public void disconnect() {
+        bluetoothService.disconnect();
+    }
 
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder service) {
-            bluetoothLeService = ((BluetoothService.LocalBinder) service).getService();
-            if (!bluetoothLeService.initialize()) {
-                Log.e("MainActivity","Unable to initialize Bluetooth");
-            }
-        }
+    @Override
+    public void sendMessage(String message) {
+        bluetoothService.sendMessage(message);
+    }
 
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            bluetoothLeService = null;
-        }
-    };
+    @Override
+    public int getConnectionState() {
+        return bluetoothService != null ? bluetoothService.getConnectionState() : -1;
+    }
+
+
+    public static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BluetoothService.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BluetoothService.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(BluetoothService.ACTION_GATT_SERVICES_DISCOVERED);
+        return intentFilter;
+    }
 }

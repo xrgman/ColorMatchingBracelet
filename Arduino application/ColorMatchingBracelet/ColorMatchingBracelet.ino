@@ -7,8 +7,8 @@
 #include <BLE2902.h>
 
 #define SERVICE_UUID           "1cf4fab1-d642-4153-a6f2-bf40db8d6f73" // UART service UUID
-#define CHARACTERISTIC_UUID_RX "1cf4fab1-d642-4153-a6f2-bf40db8d6f73"
-#define CHARACTERISTIC_UUID_TX "1cf4fab1-d642-4153-a6f2-bf40db8d6f73"
+#define CHARACTERISTIC_UUID_RX "75eb965e-a1e1-4b1d-8bb9-91e562cdb144"
+#define CHARACTERISTIC_UUID_TX "aba19161-392b-4bed-9450-3a238abd0040"
 #define BLUETOOTH_NAME "Color Matching Bracelet"
 
 #define LED_PIN 13
