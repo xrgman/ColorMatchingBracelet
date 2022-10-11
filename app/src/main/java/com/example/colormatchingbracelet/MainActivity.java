@@ -10,13 +10,18 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.view.View;
+import android.widget.TextView;
 
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.google.android.material.navigation.NavigationView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.navigation.NavController;
+import androidx.navigation.NavDestination;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
@@ -34,6 +39,8 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
 
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityMainBinding binding;
+
+    private NavigationView navigationView;
 
     //Setting up bluetoothService:
     private BluetoothService bluetoothService;
@@ -65,7 +72,7 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         setSupportActionBar(binding.appBarMain2.toolbar);
 
         DrawerLayout drawer = binding.drawerLayout;
-        NavigationView navigationView = binding.navView;
+        navigationView = binding.navView;
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         mAppBarConfiguration = new AppBarConfiguration.Builder(R.id.nav_home, R.id.nav_settings)
@@ -76,6 +83,10 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
+        navController.addOnDestinationChangedListener((navController1, navDestination, bundle) -> {
+            setNavigationBarValues(navigationView);
+        });
+
         //Requesting permissions:
         requestMissingPermissions();
 
@@ -83,8 +94,9 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         Intent gattServiceIntent = new Intent(this, BluetoothService.class);
         bindService(gattServiceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
 
-
     }
+
+
 
     @Override
     public void onResume() {
@@ -113,8 +125,11 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
 
             switch (action) {
                 case BluetoothService.ACTION_GATT_CONNECTED:
+                    break;
                 case BluetoothService.ACTION_GATT_DISCONNECTED:
                 case BluetoothService.ACTION_GATT_SERVICES_DISCOVERED:
+                    setNavigationBarValues(navigationView);
+                    break;
                 default:
                     break;
             }
@@ -172,6 +187,12 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
     @Override
     public int getConnectionState() {
         return bluetoothService != null ? bluetoothService.getConnectionState() : -1;
+    }
+
+    private void setNavigationBarValues(NavigationView navigationView) {
+        View headerView = navigationView.getHeaderView(0);
+        TextView navUsername = (TextView) headerView.findViewById(R.id.navBarConnStatus);
+        navUsername.setText(getConnectionState() == BluetoothService.STATE_CONNECTED ? "Connected" : "Disconnected");
     }
 
 
