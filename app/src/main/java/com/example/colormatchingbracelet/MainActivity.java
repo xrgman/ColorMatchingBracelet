@@ -14,6 +14,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
+import com.example.colormatchingbracelet.bluetooth.MessageType;
 import com.google.android.material.navigation.NavigationView;
 
 import androidx.annotation.NonNull;
@@ -180,8 +181,8 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
     }
 
     @Override
-    public void sendMessage(String message) {
-        bluetoothService.sendMessage(message);
+    public void sendMessage(MessageType type, String message) {
+        bluetoothService.sendMessage(type, message);
     }
 
     @Override

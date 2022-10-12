@@ -14,6 +14,14 @@
 #define LED_PIN 13
 #define NUM_PIXELS 5 //Nr of leds in bracelet
 
+//Defining message types:
+enum messageType {
+  INIT,
+  STAT,
+  DEBUG,
+  LEDSTRIP
+};
+
 //Creating led strip object:
 Adafruit_NeoPixel bracelet(NUM_PIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -23,6 +31,9 @@ BLECharacteristic * pTxCharacteristic;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
+
+//Declaring functions:
+void processLedstripCommand(std::string command);
 
 /**
   Callback used when device is connected or disconnected:
@@ -48,7 +59,49 @@ class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
       std::string rxValue = pCharacteristic->getValue();
 
-      if (rxValue.length() > 0) {
+      if (rxValue.length() > 2) {
+        
+        //Looking if start character is correct, else discard:
+        if(rxValue[0] != '?') {
+          Serial.println("Message with invalid start character: " + rxValue[0]);
+          return;
+        }
+
+        //Extracting type:
+        int typeId = int(rxValue[1]);  
+
+        //Checking if type exists:
+        if(typeId >= LEDSTRIP) {
+          Serial.println("Second or third character is not a number, expected type id here.");
+          return;
+        }
+
+        Serial.print("Processing message of type: ");
+        Serial.println(typeId);
+
+        //Grabbing message length:
+        int messageLength = int(rxValue[2]);
+
+        //Grabbing message:
+        std::string message = rxValue.substr(3, messageLength);
+
+        //Switching on message type:
+        switch(typeId) {
+          case DEBUG:
+            Serial.print("Debug message: ");
+
+            for (int i = 0; i < message.length(); i++){
+              Serial.print(message[i]);          
+            }
+
+            Serial.println("");
+
+            break;
+          case LEDSTRIP:
+            processLedstripCommand(message);
+            break;
+        }
+
         Serial.println("*********");
         Serial.print("Received Value: ");
 
@@ -111,6 +164,8 @@ void loop() {
 		// do stuff here on connecting
         oldDeviceConnected = deviceConnected;
     }  
+}
 
-  
+void processLedstripCommand(std::string command) {
+
 }

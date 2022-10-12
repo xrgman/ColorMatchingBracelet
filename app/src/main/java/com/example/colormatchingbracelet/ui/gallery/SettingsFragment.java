@@ -21,6 +21,7 @@ import com.example.colormatchingbracelet.bluetooth.BluetoothConnection;
 import com.example.colormatchingbracelet.bluetooth.BluetoothConnectionCallback;
 import com.example.colormatchingbracelet.bluetooth.BluetoothService;
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
+import com.example.colormatchingbracelet.bluetooth.MessageType;
 import com.example.colormatchingbracelet.databinding.FragmentSettingsBinding;
 
 public class SettingsFragment extends Fragment implements BluetoothConnectionCallback {
@@ -29,6 +30,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
     private TextView connStatusBlt;
     private Button connectBltBtn;
+    private Button test;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -59,8 +61,19 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
         handler.postDelayed((Runnable) () -> BluetoothConnection.stopScan(), 1000 * 20);
 
+        test = root.findViewById(R.id.sendTestMsg);
+        //test.setEnabled(bluetoothServiceLink.getConnectionState() == BluetoothService.STATE_CONNECTED);
+
+        test.setOnClickListener(view -> {
+            if(bluetoothServiceLink.getConnectionState() == BluetoothService.STATE_CONNECTED) {
+                bluetoothServiceLink.sendMessage(MessageType.DEBUG, "Letsgooo frm");
+            }
+        });
+
         //Restoring connection status:
         setConnectionStatus(bluetoothServiceLink.getConnectionState() == BluetoothService.STATE_CONNECTED);
+
+
 
         return root;
     }
@@ -117,6 +130,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
         //Changing button:
         if(connected) {
+            test.setEnabled(true);
             connectBltBtn.setText("Disconnect");
 
             connectBltBtn.setOnClickListener(view -> {
@@ -124,6 +138,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
             });
         }
         else{
+            test.setEnabled(false);
             connectBltBtn.setText("Connect");
 
             connectBltBtn.setOnClickListener(view -> {

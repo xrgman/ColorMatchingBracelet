@@ -16,6 +16,9 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -128,15 +131,23 @@ public class BluetoothService extends Service implements IBluetoothService {
 
 
     /**
-     * TODO wrapper maken waar type enzo wordt gegeven en dan length blabla protocol.
-     * @param message
+     * Start | Type | length | data | checksum TODO
      */
     @Override
     @SuppressLint("MissingPermission")
-    public void sendMessage(String message) {
-        byte[] data = message.getBytes();
+    public void sendMessage(MessageType type, String message) {
+        String msgToSend = "?";
 
-        bluetoothNotifyCharacteristic.setValue(data);
+        //Adding type:
+        msgToSend += (char) type.getValue();
+
+        //Adding message length:
+        msgToSend += (char) message.length();
+
+        //Adding message:
+        msgToSend += message;
+
+        bluetoothNotifyCharacteristic.setValue(msgToSend.getBytes());
 
         bluetoothGatt.writeCharacteristic(bluetoothNotifyCharacteristic);
     }
