@@ -11,8 +11,11 @@
 #define CHARACTERISTIC_UUID_TX "aba19161-392b-4bed-9450-3a238abd0040"
 #define BLUETOOTH_NAME "Color Matching Bracelet"
 
-#define LED_PIN 13
-#define NUM_PIXELS 5 //Nr of leds in bracelet
+#define LED_PIN 25
+#define NUM_PIXELS 10 //Nr of leds in bracelet
+
+//Array with color values
+uint32_t ledStripPixelColors[NUM_PIXELS];
 
 //Defining message types:
 enum messageType {
@@ -34,6 +37,8 @@ bool oldDeviceConnected = false;
 
 //Declaring functions:
 void processLedstripCommand(std::string command);
+void clearLedStrip();
+void setLedStripPixel(int pixel, uint32_t color);
 
 /**
   Callback used when device is connected or disconnected:
@@ -71,7 +76,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         int typeId = int(rxValue[1]);  
 
         //Checking if type exists:
-        if(typeId >= LEDSTRIP) {
+        if(typeId > LEDSTRIP) {
           Serial.println("Second or third character is not a number, expected type id here.");
           return;
         }
@@ -121,6 +126,14 @@ void setup() {
 
   //Starting ledstrip:
   bracelet.begin();
+  
+  //Clearing led strip:
+  clearLedStrip();
+
+  //Set all pixels to white:
+  for(int i = 0; i < NUM_PIXELS; i++) {
+    setLedStripPixel(i, bracelet.Color(255, 255, 255));
+  }
 
   //Starting bluetooth:
   BLEDevice::init(BLUETOOTH_NAME);
@@ -164,8 +177,76 @@ void loop() {
 		// do stuff here on connecting
         oldDeviceConnected = deviceConnected;
     }  
+
+    
 }
 
-void processLedstripCommand(std::string command) {
+enum LedStripCommandType {
+  POWER,
+  COLOR,
+  BRIG
+};
 
+void processLedstripCommand(std::string command) {
+    //Extracting type:
+    int typeId = int(command[0]);  
+
+    switch(typeId) {
+      case POWER: 
+      {
+        bool powerValue = bool(command[1]);
+
+        Serial.print("Processing power state: ");
+        Serial.println(powerValue);
+
+        setLedStripPower(powerValue);
+
+        break;
+      }
+      case BRIG:
+      {
+        int brightness = int(command[1]); 
+
+        Serial.print("Brightness: ");
+        Serial.println(brightness);
+
+        bracelet.setBrightness(brightness);
+        bracelet.show();      
+
+
+
+        break;
+      }
+    }
+}
+
+void setLedStripPixel(int pixel, uint32_t color) {
+    if(pixel < NUM_PIXELS) {
+      ledStripPixelColors[pixel] = color;
+
+      bracelet.setPixelColor(pixel, color);
+    }
+}
+
+void clearLedStrip() {
+    for(int i = 0; i < NUM_PIXELS; i++) {
+      bracelet.setPixelColor(i, bracelet.Color(0, 0, 0));
+    }
+
+    bracelet.show();
+}
+
+
+void setLedStripPower(bool powerState) {
+  if(powerState) {
+    //Restoring original state:
+    for(int i = 0; i < NUM_PIXELS; i++) {
+      bracelet.setPixelColor(i, ledStripPixelColors[i]);
+    }
+
+    bracelet.show();
+  }
+  else {
+    clearLedStrip();
+  }
 }

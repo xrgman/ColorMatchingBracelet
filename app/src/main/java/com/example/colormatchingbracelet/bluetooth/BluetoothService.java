@@ -16,6 +16,8 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,6 +44,13 @@ public class BluetoothService extends Service implements IBluetoothService {
     public BluetoothGattCharacteristic bluetoothNotifyCharacteristic;
     public BluetoothGattCharacteristic bluetoothWriteCharacteristic;
     private Binder binder = new LocalBinder();
+
+    private BraceletInformation braceletInformation;
+
+    public BluetoothService() {
+        braceletInformation = new BraceletInformation();
+        braceletInformation.ledStripPowerState = true; //TODO get this from the bracelet
+    }
 
     @Nullable
     @Override
@@ -186,6 +195,16 @@ public class BluetoothService extends Service implements IBluetoothService {
 
     public int getConnectionState() {
         return connectionState;
+    }
+
+    @Override
+    public boolean isConnected() {
+        return connectionState == STATE_CONNECTED;
+    }
+
+    @Override
+    public BraceletInformation getBraceletInformation() {
+        return braceletInformation;
     }
 
     /**

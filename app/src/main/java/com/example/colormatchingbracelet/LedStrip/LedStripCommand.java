@@ -1,16 +1,33 @@
 package com.example.colormatchingbracelet.LedStrip;
 
-public enum LedStripCommand {
-    POWER(0),
-    COLOR(1);
+import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
+import com.example.colormatchingbracelet.bluetooth.MessageType;
 
-    private final int value;
 
-    LedStripCommand(int value) {
-        this.value = value;
+public class LedStripCommand {
+
+
+    public static void sendPowerMessage(IBluetoothService bluetoothService, boolean powerState) {
+        String message = "";
+
+        //Adding type of led strip command:
+        message += (char) LedStripCommandType.POWER.getValue();
+
+        //Adding power state:
+        message += powerState ? 1 : 0;
+
+        bluetoothService.sendMessage(MessageType.LEDSTRIP, message);
     }
 
-    public int getValue() {
-        return value;
+    public static void sendBrightnessLevel(IBluetoothService bluetoothService, int brightness) {
+        String message = "";
+
+        //Adding type of led strip command:
+        message += (char) LedStripCommandType.BRIGHTNESS.getValue();
+
+        //Adding power state:
+        message += (char) brightness;
+
+        bluetoothService.sendMessage(MessageType.LEDSTRIP, message);
     }
 }

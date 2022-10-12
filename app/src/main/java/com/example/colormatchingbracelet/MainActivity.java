@@ -13,6 +13,7 @@ import android.os.IBinder;
 import android.view.View;
 import android.widget.TextView;
 
+import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.example.colormatchingbracelet.bluetooth.MessageType;
 import com.google.android.material.navigation.NavigationView;
@@ -188,6 +189,16 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
     @Override
     public int getConnectionState() {
         return bluetoothService != null ? bluetoothService.getConnectionState() : -1;
+    }
+
+    @Override
+    public boolean isConnected() {
+        return bluetoothService != null && bluetoothService.isConnected();
+    }
+
+    @Override
+    public BraceletInformation getBraceletInformation() {
+        return bluetoothService != null ? bluetoothService.getBraceletInformation() : null;
     }
 
     private void setNavigationBarValues(NavigationView navigationView) {
