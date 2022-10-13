@@ -5,7 +5,7 @@ import android.graphics.Color;
 import java.util.List;
 
 public class BraceletInformation {
-    public float batteryPercentage;
+    public int batteryPercentage;
     public boolean ledStripPowerState;
     public int ledStripBrightness;
 

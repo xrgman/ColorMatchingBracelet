@@ -11,11 +11,15 @@
 #define CHARACTERISTIC_UUID_TX "aba19161-392b-4bed-9450-3a238abd0040"
 #define BLUETOOTH_NAME "Color Matching Bracelet"
 
-#define LED_PIN 25
+#define LED_PIN 12
 #define NUM_PIXELS 10 //Nr of leds in bracelet
 
 //Array with color values
 uint32_t ledStripPixelColors[NUM_PIXELS];
+bool ledStripPower;
+
+//Battery status:
+int batteryPercentage;
 
 //Defining message types:
 enum messageType {
@@ -77,7 +81,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 
         //Checking if type exists:
         if(typeId > LEDSTRIP) {
-          Serial.println("Second or third character is not a number, expected type id here.");
+          Serial.println("Invalid message type.");
           return;
         }
 
@@ -107,18 +111,52 @@ class MyCallbacks: public BLECharacteristicCallbacks {
             break;
         }
 
-        Serial.println("*********");
-        Serial.print("Received Value: ");
+        // Serial.println("*********");
+        // Serial.print("Received Value: ");
 
-        for (int i = 0; i < rxValue.length(); i++){
-            Serial.print(rxValue[i]);          
-        }
+        // for (int i = 0; i < rxValue.length(); i++){
+        //     Serial.print(rxValue[i]);          
+        // }
           
-        Serial.println();
-        Serial.println("*********");
+        // Serial.println();
+        // Serial.println("*********");
       }
     }
 };
+
+void sendMessage(messageType type, std::string msg) {
+  std::string message = "?";
+
+  message += char(type);
+  message += char(message.length());
+
+  message += msg;
+
+  //TODO checksum
+
+  pTxCharacteristic->setValue(message);
+  pTxCharacteristic->notify();
+
+  // Serial.print("Sending bluetooth message: ");
+  
+  // for (int i = 0; i < message.length(); i++){
+  //     Serial.print(message[i]);          
+  // }
+
+  // Serial.println("");
+}
+
+/**
+  Function used to construct statistics message and send it to device.
+**/
+void sendStatistics() {
+  std::string message = "";
+
+  message += char(batteryPercentage);
+  message += ledStripPower ? "1" : "0"; 
+
+  sendMessage(STAT, message);
+}
 
 
 void setup() {
@@ -134,6 +172,10 @@ void setup() {
   for(int i = 0; i < NUM_PIXELS; i++) {
     setLedStripPixel(i, bracelet.Color(255, 255, 255));
   }
+
+  //Settings variables:
+  ledStripPower = false;
+  batteryPercentage = 90; //Dummy for now :)
 
   //Starting bluetooth:
   BLEDevice::init(BLUETOOTH_NAME);
@@ -162,8 +204,20 @@ void setup() {
   Serial.println("Waiting for client connection");
 }
 
-void loop() {
+void rainbow(int wait) {
+  for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256) {
+    for(int i=0; i<bracelet.numPixels(); i++) { 
+      int pixelHue = firstPixelHue + (i * 65536L / bracelet.numPixels());
+      bracelet.setPixelColor(i, bracelet.gamma32(bracelet.ColorHSV(pixelHue)));
+    }
+    bracelet.show();
+    delay(wait);
+  }
+}
 
+int cnt = 0;
+
+void loop() {
     // disconnecting
     if (!deviceConnected && oldDeviceConnected) {
         delay(500); // give the bluetooth stack the chance to get things ready
@@ -174,11 +228,16 @@ void loop() {
 
     // connecting
     if (deviceConnected && !oldDeviceConnected) {
-		// do stuff here on connecting
+		    // do stuff here on connecting
         oldDeviceConnected = deviceConnected;
     }  
 
-    
+    //Send statistics if connected:
+    if(deviceConnected && cnt % 5000 == 0) {
+        sendStatistics();
+    }
+
+    cnt++; 
 }
 
 enum LedStripCommandType {
@@ -194,11 +253,8 @@ void processLedstripCommand(std::string command) {
     switch(typeId) {
       case POWER: 
       {
-        bool powerValue = bool(command[1]);
-
-        Serial.print("Processing power state: ");
-        Serial.println(powerValue);
-
+        bool powerValue = command[1] == '1';
+        
         setLedStripPower(powerValue);
 
         break;
@@ -212,8 +268,6 @@ void processLedstripCommand(std::string command) {
 
         bracelet.setBrightness(brightness);
         bracelet.show();      
-
-
 
         break;
       }
@@ -238,6 +292,8 @@ void clearLedStrip() {
 
 
 void setLedStripPower(bool powerState) {
+  ledStripPower = powerState;  
+
   if(powerState) {
     //Restoring original state:
     for(int i = 0; i < NUM_PIXELS; i++) {
@@ -246,7 +302,7 @@ void setLedStripPower(bool powerState) {
 
     bracelet.show();
   }
-  else {
+  else {    
     clearLedStrip();
   }
 }

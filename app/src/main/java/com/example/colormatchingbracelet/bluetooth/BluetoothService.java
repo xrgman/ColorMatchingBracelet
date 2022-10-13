@@ -7,11 +7,13 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.Message;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -191,6 +193,36 @@ public class BluetoothService extends Service implements IBluetoothService {
                 Log.w("BluetoothService", "onServicesDiscovered received: " + status);
             }
         }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            String input = characteristic.getStringValue(0);
+
+            //Checking start character
+            if(!input.startsWith("?")) {
+                Log.e("BluetoothService", "Invalid start character: " + input.charAt(0) + ", skipping message");
+                return;
+            }
+
+            //Extracting type:
+            int typeId = (int) input.charAt(1);
+
+            //Checking if type exists:
+            if(typeId > MessageType.values().length) {
+                Log.e("BluetoothService", "Invalid message type: " + typeId + ", skipping message");
+                return;
+            }
+
+            MessageType type = MessageType.values()[typeId];
+
+            //Grabbing message length:
+            int messageLength = (int) input.charAt(2);
+
+            //Grabbing message:
+            String message = input.substring(3, 3 + messageLength);
+
+            processMessage(type, message);
+        }
     };
 
     public int getConnectionState() {
@@ -237,8 +269,40 @@ public class BluetoothService extends Service implements IBluetoothService {
                 }
                 else if(uuid.equalsIgnoreCase(UUID_WRITE.toString())) {
                     bluetoothWriteCharacteristic = gattCharacteristic;
+
+                    //Enable notifications from client:
+                    bluetoothGatt.setCharacteristicNotification(bluetoothWriteCharacteristic, true);
+
+                    BluetoothGattDescriptor desc = bluetoothWriteCharacteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805F9B34FB"));
+
+                    desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                    bluetoothGatt.writeDescriptor(desc);
                 }
             }
         }
     }
+
+    //#region Message Processing
+
+    /**
+     * Check type of message and pass data to correct function;
+     * @param type
+     * @param message
+     */
+    private void processMessage(MessageType type, String message) {
+        switch(type) {
+            case STATUS:
+                processStatusMessage(message);
+                break;
+        }
+    }
+
+    private void processStatusMessage(String message) {
+        braceletInformation = new BraceletInformation();
+
+        braceletInformation.batteryPercentage = (int) message.charAt(0);
+        braceletInformation.ledStripPowerState = message.charAt(1) == '1';
+    }
+
+    //#endregion
 }
