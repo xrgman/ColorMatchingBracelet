@@ -1,4 +1,4 @@
-package com.example.colormatchingbracelet.ui.gallery;
+package com.example.colormatchingbracelet.ui.settings;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
