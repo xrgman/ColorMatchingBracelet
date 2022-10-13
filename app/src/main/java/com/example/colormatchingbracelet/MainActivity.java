@@ -34,6 +34,8 @@ import com.example.colormatchingbracelet.databinding.ActivityMainBinding;
 
 import com.example.colormatchingbracelet.bluetooth.BluetoothService;
 
+import org.w3c.dom.Text;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -95,10 +97,7 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         //Setting up service:
         Intent gattServiceIntent = new Intent(this, BluetoothService.class);
         bindService(gattServiceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
-
     }
-
-
 
     @Override
     public void onResume() {
@@ -130,6 +129,7 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
                     break;
                 case BluetoothService.ACTION_GATT_DISCONNECTED:
                 case BluetoothService.ACTION_GATT_SERVICES_DISCOVERED:
+                case BluetoothService.ACTION_GATT_MESSAGE_RECEIVED:
                     setNavigationBarValues(navigationView);
                     break;
                 default:
@@ -201,10 +201,31 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         return bluetoothService != null ? bluetoothService.getBraceletInformation() : null;
     }
 
+    /**
+     * Update values in the navigation bar based on the bracelet status
+     * @param navigationView - view of the navigation bar
+     */
     private void setNavigationBarValues(NavigationView navigationView) {
         View headerView = navigationView.getHeaderView(0);
-        TextView navUsername = (TextView) headerView.findViewById(R.id.navBarConnStatus);
-        navUsername.setText(getConnectionState() == BluetoothService.STATE_CONNECTED ? "Connected" : "Disconnected");
+
+        TextView navUsername = headerView.findViewById(R.id.navBarConnStatus);
+        String newText = isConnected() ? "Connected" : "Disconnected";
+
+        if(!navUsername.getText().equals(newText)) {
+            navUsername.setText(newText);
+        }
+
+        //Grabbing bracelet information:
+        BraceletInformation braceletInformation = getBraceletInformation();
+
+        if(braceletInformation != null) {
+            TextView batteryPercentage = headerView.findViewById(R.id.navBarBattery);
+            newText = !isConnected() ? "-" : braceletInformation.batteryPercentage + "%";
+
+            if(!batteryPercentage.getText().equals(newText)) {
+                batteryPercentage.setText(newText);
+            }
+        }
     }
 
 
@@ -213,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         intentFilter.addAction(BluetoothService.ACTION_GATT_CONNECTED);
         intentFilter.addAction(BluetoothService.ACTION_GATT_DISCONNECTED);
         intentFilter.addAction(BluetoothService.ACTION_GATT_SERVICES_DISCOVERED);
+        intentFilter.addAction(BluetoothService.ACTION_GATT_MESSAGE_RECEIVED);
         return intentFilter;
     }
 }

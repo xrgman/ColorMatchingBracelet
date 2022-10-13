@@ -31,6 +31,7 @@ public class BluetoothService extends Service implements IBluetoothService {
     public final static String ACTION_GATT_CONNECTED = "com.example.colormatchingbracelet.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED = "com.example.colormatchingbracelet.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "com.example.colormatchingbracelet.ACTION_GATT_SERVICES_DISCOVERED";
+    public final static String ACTION_GATT_MESSAGE_RECEIVED = "com.example.colormatchingbracelet.ACTION_GATT_MESSAGE_RECEIVED";
 
     public final static UUID UUID_SERVICE = UUID.fromString("1cf4fab1-d642-4153-a6f2-bf40db8d6f73");
     public final static UUID UUID_NOTIFY = UUID.fromString("75eb965e-a1e1-4b1d-8bb9-91e562cdb144");
@@ -221,7 +222,11 @@ public class BluetoothService extends Service implements IBluetoothService {
             //Grabbing message:
             String message = input.substring(3, 3 + messageLength);
 
+            //Processing message:
             processMessage(type, message);
+
+            //Broadcasting message received:
+            broadcastUpdate(ACTION_GATT_MESSAGE_RECEIVED);
         }
     };
 
