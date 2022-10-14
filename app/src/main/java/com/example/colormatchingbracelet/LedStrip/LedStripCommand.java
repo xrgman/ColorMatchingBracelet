@@ -30,4 +30,16 @@ public class LedStripCommand {
 
         bluetoothService.sendMessage(MessageType.LEDSTRIP, message);
     }
+
+    public static void sendEffect(IBluetoothService bluetoothService, LedStripEffectType type) {
+        String message = "";
+
+        //Adding type of led strip command:
+        message += (char) LedStripCommandType.EFFECT.getValue();
+
+        //Adding effect type:
+        message += (char) type.getValue();
+
+        bluetoothService.sendMessage(MessageType.LEDSTRIP, message);
+    }
 }

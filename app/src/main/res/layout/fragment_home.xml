@@ -24,6 +24,16 @@
                 android:layout_alignParentRight="true"
                 />
 
+            <TextView
+                android:id="@+id/disconnectedTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Disconnected"
+                android:textColor="@color/red"
+                android:layout_marginStart="5sp"
+                android:layout_marginTop="15sp"
+                android:textAlignment="center"/>
+
         </LinearLayout>
 
         <LinearLayout
@@ -90,14 +100,7 @@
                     android:id="@+id/effectRainbowBtn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Rainbow"/>
-
-                <Button
-                    android:id="@+id/effectFadeBtn"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10sp"
-                    android:text="Fade"/>
+                    android:text="Rainbow" />
 
                 <Button
                     android:id="@+id/effectCircleBtn"
@@ -105,6 +108,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10sp"
                     android:text="Circle"/>
+
+                <Button
+                    android:id="@+id/effectFadeBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10sp"
+                    android:text="Fade"/>
 
             </LinearLayout>
 

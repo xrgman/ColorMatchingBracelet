@@ -17,6 +17,7 @@
 //Array with color values
 uint32_t ledStripPixelColors[NUM_PIXELS];
 bool ledStripPower;
+int currentBrightness = 255;
 
 //Battery status:
 int batteryPercentage;
@@ -28,6 +29,23 @@ enum messageType {
   DEBUG,
   LEDSTRIP
 };
+
+enum LedStripCommandType {
+  POWER,
+  COLOR,
+  BRIG,
+  EFFECT
+};
+
+enum LedStripEffectType {
+  NONE,
+  RAINBOW,
+  CIRCLE,
+  FADE
+};
+
+//Storing current effect:
+LedStripEffectType currentEffectType = NONE;
 
 //Creating led strip object:
 Adafruit_NeoPixel bracelet(NUM_PIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -128,7 +146,7 @@ void sendMessage(messageType type, std::string msg) {
   std::string message = "?";
 
   message += char(type);
-  message += char(message.length());
+  message += char(msg.length());
 
   message += msg;
 
@@ -154,6 +172,8 @@ void sendStatistics() {
 
   message += char(batteryPercentage);
   message += ledStripPower ? "1" : "0"; 
+  message += char(currentEffectType);
+  message += char(currentBrightness);
 
   sendMessage(STAT, message);
 }
@@ -238,13 +258,10 @@ void loop() {
     }
 
     cnt++; 
-}
 
-enum LedStripCommandType {
-  POWER,
-  COLOR,
-  BRIG
-};
+    //Process effect:
+    processEffects();
+}
 
 void processLedstripCommand(std::string command) {
     //Extracting type:
@@ -263,11 +280,22 @@ void processLedstripCommand(std::string command) {
       {
         int brightness = int(command[1]); 
 
-        Serial.print("Brightness: ");
-        Serial.println(brightness);
+        currentBrightness = ((float)brightness/100)*255;
 
-        bracelet.setBrightness(brightness);
+        Serial.print("Brightness: ");
+        Serial.println(currentBrightness);
+
+        bracelet.setBrightness(currentBrightness);
         bracelet.show();      
+
+        break;
+      }
+      case EFFECT:
+      {
+        int effectTypeId = int(command[1]);
+
+        //Setting current effect:        
+        currentEffectType = (LedStripEffectType) effectTypeId;
 
         break;
       }
@@ -305,4 +333,45 @@ void setLedStripPower(bool powerState) {
   else {    
     clearLedStrip();
   }
+}
+
+//**********************
+// LedStrip effects
+//**********************
+
+void processEffects() {
+  switch(currentEffectType) {
+    case RAINBOW:
+      rainbowCycle(10);
+      break;
+  }
+}
+
+//Stolen from example :)
+//TODO non blocking
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< bracelet.numPixels(); i++) {
+      setLedStripPixel(i, Wheel(((i * 256 / bracelet.numPixels()) + j) & 255)); 
+    }
+
+    bracelet.show();
+    delay(wait);
+  }
+}
+
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  
+  if(WheelPos < 85) {
+    return bracelet.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return bracelet.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return bracelet.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }

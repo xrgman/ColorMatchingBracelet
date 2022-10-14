@@ -19,6 +19,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
+import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -307,6 +308,7 @@ public class BluetoothService extends Service implements IBluetoothService {
 
         braceletInformation.batteryPercentage = (int) message.charAt(0);
         braceletInformation.ledStripPowerState = message.charAt(1) == '1';
+        braceletInformation.ledStripEffectCurrent = LedStripEffectType.values()[(int) message.charAt(2)];
     }
 
     //#endregion

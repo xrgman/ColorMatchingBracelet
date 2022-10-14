@@ -7,7 +7,9 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -15,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
 import com.example.colormatchingbracelet.LedStrip.LedStripCommand;
 import com.example.colormatchingbracelet.LedStrip.LedStripCommandType;
+import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 import com.example.colormatchingbracelet.MainActivity;
 import com.example.colormatchingbracelet.R;
 import com.example.colormatchingbracelet.bluetooth.BluetoothService;
@@ -28,6 +31,12 @@ public class HomeFragment extends Fragment {
 
     private ImageView powerButton;
     private Slider brightnessSlider;
+    private TextView disconnectedTxt;
+
+    //Effect buttons:
+    private Button effectRainbowButton;
+    private Button effectFadeButton;
+    private Button effectCircleButton;
 
     private boolean powerState = false;
 
@@ -37,6 +46,11 @@ public class HomeFragment extends Fragment {
             final String action = intent.getAction();
 
             switch (action) {
+                case BluetoothService.ACTION_GATT_CONNECTED:
+                    setBluetoothEnabled(true);
+                case BluetoothService.ACTION_GATT_DISCONNECTED:
+                    setBluetoothEnabled(false);
+                    break;
                 case BluetoothService.ACTION_GATT_MESSAGE_RECEIVED:
                     updateLayout();
                     break;
@@ -55,11 +69,32 @@ public class HomeFragment extends Fragment {
             LedStripCommand.sendPowerMessage(bluetoothServiceLink, !bluetoothServiceLink.getBraceletInformation().ledStripPowerState);
         });
 
+        disconnectedTxt = root.findViewById(R.id.disconnectedTxt);
+
         brightnessSlider = root.findViewById(R.id.brightnessSlider);
         brightnessSlider.addOnChangeListener((slider, value, fromUser) -> {
-            int valueToSend = (int) ((value/100)*255);
+            LedStripCommand.sendBrightnessLevel(bluetoothServiceLink, (int) value);
+        });
 
-            LedStripCommand.sendBrightnessLevel(bluetoothServiceLink, valueToSend);
+        effectRainbowButton = root.findViewById(R.id.effectRainbowBtn);
+        effectRainbowButton.setOnClickListener(view -> {
+            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.RAINBOW : LedStripEffectType.NONE;
+
+            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+        });
+
+        effectCircleButton = root.findViewById(R.id.effectCircleBtn);
+        effectCircleButton.setOnClickListener(view -> {
+            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.CIRCLE : LedStripEffectType.NONE;
+
+            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+        });
+
+        effectFadeButton = root.findViewById(R.id.effectFadeBtn);
+        effectFadeButton.setOnClickListener(view -> {
+            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.FADE : LedStripEffectType.NONE;
+
+            LedStripCommand.sendEffect(bluetoothServiceLink, type);
         });
 
         setBluetoothEnabled(bluetoothServiceLink.isConnected());
@@ -104,11 +139,18 @@ public class HomeFragment extends Fragment {
     private void setBluetoothEnabled(boolean enabled) {
         powerButton.setEnabled(enabled);
 
+        disconnectedTxt.setText(enabled ? "" : "Disconnected");
+
         setLedStripControlsEnabled(enabled && bluetoothServiceLink.getBraceletInformation().ledStripPowerState);
     }
 
     private void setLedStripControlsEnabled(boolean enabled) {
         brightnessSlider.setEnabled(enabled);
+
+        //Effect buttons:
+        effectRainbowButton.setEnabled(enabled);
+        effectCircleButton.setEnabled(enabled);
+        effectFadeButton.setEnabled(enabled);
     }
 
     private void updateLayout() {
@@ -116,11 +158,30 @@ public class HomeFragment extends Fragment {
 
         if(braceletInformation != null) {
             if(powerState != braceletInformation.ledStripPowerState) {
-                powerButton.setImageResource(braceletInformation.ledStripPowerState ? R.drawable.ic_power_on : R.drawable.ic_power);
+                powerButton.setImageResource(braceletInformation.ledStripPowerState && bluetoothServiceLink.isConnected() ? R.drawable.ic_power_on : R.drawable.ic_power);
 
                 //Turn controls on or off:
                 setLedStripControlsEnabled(braceletInformation.ledStripPowerState);
                 powerState = braceletInformation.ledStripPowerState;
+            }
+
+            //Setting effect button pushed:
+            switch(braceletInformation.ledStripEffectCurrent) {
+                case RAINBOW:
+                    effectRainbowButton.setPressed(true);
+                    effectCircleButton.setPressed(false);
+                    effectFadeButton.setPressed(false);
+                    break;
+                case CIRCLE:
+                    effectCircleButton.setPressed(true);
+                    effectRainbowButton.setPressed(false);
+                    effectFadeButton.setPressed(false);
+                    break;
+                case FADE:
+                    effectFadeButton.setPressed(true);
+                    effectRainbowButton.setPressed(false);
+                    effectCircleButton.setPressed(false);
+                    break;
             }
 
 

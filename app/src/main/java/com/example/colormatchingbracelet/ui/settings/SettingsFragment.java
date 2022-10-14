@@ -61,14 +61,14 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
         handler.postDelayed((Runnable) () -> BluetoothConnection.stopScan(), 1000 * 20);
 
-        test = root.findViewById(R.id.sendTestMsg);
+        //test = root.findViewById(R.id.sendTestMsg);
         //test.setEnabled(bluetoothServiceLink.getConnectionState() == BluetoothService.STATE_CONNECTED);
 
-        test.setOnClickListener(view -> {
-            if(bluetoothServiceLink.getConnectionState() == BluetoothService.STATE_CONNECTED) {
-                bluetoothServiceLink.sendMessage(MessageType.DEBUG, "Letsgooo frm");
-            }
-        });
+//        test.setOnClickListener(view -> {
+//            if(bluetoothServiceLink.getConnectionState() == BluetoothService.STATE_CONNECTED) {
+//                bluetoothServiceLink.sendMessage(MessageType.DEBUG, "Letsgooo frm");
+//            }
+//        });
 
         //Restoring connection status:
         setConnectionStatus(bluetoothServiceLink.getConnectionState() == BluetoothService.STATE_CONNECTED);

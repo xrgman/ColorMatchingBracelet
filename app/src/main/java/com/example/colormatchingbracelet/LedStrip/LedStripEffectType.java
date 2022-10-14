@@ -1,14 +1,14 @@
 package com.example.colormatchingbracelet.LedStrip;
 
-public enum LedStripCommandType {
-    POWER(0),
-    COLOR(1),
-    BRIGHTNESS(2),
-    EFFECT(3);
+public enum LedStripEffectType {
+    NONE(0),
+    RAINBOW(1),
+    CIRCLE(2),
+    FADE(3);
 
     private final int value;
 
-    LedStripCommandType(int value) {
+    LedStripEffectType(int value) {
         this.value = value;
     }
 
@@ -16,3 +16,5 @@ public enum LedStripCommandType {
         return value;
     }
 }
+
+
