@@ -1,8 +1,12 @@
 package com.example.colormatchingbracelet.ui.home;
 
+import static android.content.Context.LAYOUT_INFLATER_SERVICE;
+
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.media.Image;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +16,11 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.camera.core.Camera;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.Preview;
+import androidx.camera.view.PreviewView;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
@@ -24,6 +33,12 @@ import com.example.colormatchingbracelet.bluetooth.BluetoothService;
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.example.colormatchingbracelet.databinding.FragmentHomeBinding;
 import com.google.android.material.slider.Slider;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.lifecycle.LifecycleOwner;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.concurrent.ExecutionException;
 
 public class HomeFragment extends Fragment {
     private FragmentHomeBinding binding;
@@ -32,6 +47,7 @@ public class HomeFragment extends Fragment {
     private ImageView powerButton;
     private Slider brightnessSlider;
     private TextView disconnectedTxt;
+    private ImageView colorScanButton;
 
     //Effect buttons:
     private Button effectRainbowButton;
@@ -39,6 +55,9 @@ public class HomeFragment extends Fragment {
     private Button effectCircleButton;
 
     private boolean powerState = false;
+
+    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    private PreviewView previewView;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -67,6 +86,12 @@ public class HomeFragment extends Fragment {
         powerButton = root.findViewById(R.id.powerButton);
         powerButton.setOnClickListener(view -> {
             LedStripCommand.sendPowerMessage(bluetoothServiceLink, !bluetoothServiceLink.getBraceletInformation().ledStripPowerState);
+        });
+
+        colorScanButton = root.findViewById(R.id.colorScanButton);
+        colorScanButton.setOnClickListener(view -> {
+            //Open popup with camera view and color scanner :)
+            createScanColorDialog();
         });
 
         disconnectedTxt = root.findViewById(R.id.disconnectedTxt);
@@ -99,7 +124,25 @@ public class HomeFragment extends Fragment {
 
         setBluetoothEnabled(bluetoothServiceLink.isConnected());
 
+
+
+
         return root;
+    }
+
+    void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
+
+
+        Preview preview = new Preview.Builder()
+                .build();
+
+        CameraSelector cameraSelector = new CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .build();
+
+        preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
+        Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
     }
 
     @Override
@@ -144,8 +187,10 @@ public class HomeFragment extends Fragment {
         setLedStripControlsEnabled(enabled && bluetoothServiceLink.getBraceletInformation().ledStripPowerState);
     }
 
+    //Todo make lists
     private void setLedStripControlsEnabled(boolean enabled) {
         brightnessSlider.setEnabled(enabled);
+        //colorScanButton.setEnabled(enabled); TODO enable
 
         //Effect buttons:
         effectRainbowButton.setEnabled(enabled);
@@ -183,9 +228,42 @@ public class HomeFragment extends Fragment {
                     effectCircleButton.setPressed(false);
                     break;
             }
-
-
         }
+    }
 
+    private void createScanColorDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+        LayoutInflater inflater = (LayoutInflater) getActivity().getSystemService(LAYOUT_INFLATER_SERVICE);
+        View layout = inflater.inflate(R.layout.scan_color_dialog, null);
+
+        builder.setView(layout);
+        builder.setCancelable(false);
+
+        AlertDialog dialog = builder.create();
+
+        //Camera:
+        cameraProviderFuture = ProcessCameraProvider.getInstance(getActivity());
+
+        previewView = layout.findViewById(R.id.previewView);
+
+        cameraProviderFuture.addListener(() -> {
+            try {
+                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
+                bindPreview(cameraProvider);
+            } catch (ExecutionException | InterruptedException e) {
+                // No errors need to be handled for this Future.
+                // This should never be reached.
+            }
+        }, ContextCompat.getMainExecutor(getActivity()));
+
+
+        //Registering calibration button
+//        Button calibrationButton = layout.findViewById(R.id.calibrateButton);
+//        Button startButton = layout.findViewById(R.id.startButton);
+
+
+        //Showing calibration dialog:
+        dialog.show();
     }
 }

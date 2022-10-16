@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Scan new bracelet color"
+            android:textColor="@color/headerColor"
+            android:textStyle="bold"
+            android:textSize="25sp"
+            android:layout_marginTop="5dp"
+            android:textAlignment="center"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Color: "
+                android:textSize="20sp"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="5dp"
+                android:textColor="@color/headerColor"/>
+
+            <View android:id="@+id/rectangle_current_color"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_alignParentTop="true"
+                android:background="#DDDDDD"
+                android:visibility="visible"/>
+
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/testContainer"
+            android:layout_height="300dp"
+            android:layout_width="300dp">
+            <androidx.camera.view.PreviewView
+                android:id="@+id/previewView"
+                android:layout_height="match_parent"
+                android:layout_width="match_parent"
+                app:scaleType="fitCenter"/>
+        </FrameLayout>
+
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

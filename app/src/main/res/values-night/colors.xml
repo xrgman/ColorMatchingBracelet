@@ -10,5 +10,5 @@
     <color name="green">#07C408</color>
     <color name="red">#f44336</color>
 
-    <color name="headerColor">@color/black</color>
+    <color name="headerColor">@color/white</color>
 </resources>

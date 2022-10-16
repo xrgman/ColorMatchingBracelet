@@ -130,7 +130,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
         //Changing button:
         if(connected) {
-            test.setEnabled(true);
+            //test.setEnabled(true);
             connectBltBtn.setText("Disconnect");
 
             connectBltBtn.setOnClickListener(view -> {
@@ -138,7 +138,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
             });
         }
         else{
-            test.setEnabled(false);
+            //test.setEnabled(false);
             connectBltBtn.setText("Connect");
 
             connectBltBtn.setOnClickListener(view -> {

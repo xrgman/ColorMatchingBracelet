@@ -154,14 +154,6 @@ void sendMessage(messageType type, std::string msg) {
 
   pTxCharacteristic->setValue(message);
   pTxCharacteristic->notify();
-
-  // Serial.print("Sending bluetooth message: ");
-  
-  // for (int i = 0; i < message.length(); i++){
-  //     Serial.print(message[i]);          
-  // }
-
-  // Serial.println("");
 }
 
 /**
@@ -174,6 +166,18 @@ void sendStatistics() {
   message += ledStripPower ? "1" : "0"; 
   message += char(currentEffectType);
   message += char(currentBrightness);
+
+  //Colors todo dit ff nakijken:
+  message += char(NUM_PIXELS); //First we send length
+  for(int i = 0; i < NUM_PIXELS; i++) {
+    int shiftby = 16;
+
+    for (int j = 0; j < 4; j++) {
+        message[i + j] = (ledStripPixelColors[i] >> (shiftby -= 4)) & 0xF;
+    }
+  }
+  
+  //((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
 
   sendMessage(STAT, message);
 }
