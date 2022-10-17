@@ -19,6 +19,9 @@ uint32_t ledStripPixelColors[NUM_PIXELS];
 bool ledStripPower;
 uint8_t currentBrightness = 255;
 
+//Effect fields:
+uint32_t effectColor; 
+
 //Battery status:
 uint8_t batteryPercentage;
 
@@ -59,7 +62,7 @@ bool oldDeviceConnected = false;
 
 //Declaring functions:
 void processLedstripCommand(std::string command);
-void clearLedStrip();
+void clearLedStrip(bool show);
 void setLedStripPixel(int pixel, uint32_t color);
 void setLedStrip(uint32_t color);
 
@@ -242,7 +245,7 @@ void setup() {
   bracelet.begin();
 
   //Clearing led strip:
-  clearLedStrip();
+  clearLedStrip(true);
 
   //Set all pixels to white:
   for (int i = 0; i < NUM_PIXELS; i++) {
@@ -291,7 +294,7 @@ void rainbow(int wait) {
   }
 }
 
-int cnt = 0;
+uint32_t cnt = 0;
 
 void loop() {
   // disconnecting
@@ -316,7 +319,7 @@ void loop() {
   cnt++;
 
   //Process effect:
-  processEffects();
+  processEffects(cnt);
 }
 
 void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
@@ -345,10 +348,15 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
         //Translate to uint32_t color:
         uint32_t color = to_ui32(colorData);
 
-        setLedStrip(color);
+        if(currentEffectType == NONE) {
+          setLedStrip(color);
+        }
 
         bracelet.show();
-        
+
+        //Saving for effect:
+        effectColor = color;
+
         break;
       }       
     case BRIG:
@@ -372,6 +380,8 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
         //Setting current effect:
         currentEffectType = (LedStripEffectType)effectTypeId;
 
+        effectColor = ledStripPixelColors[0]; //Taking first for now :)
+
         break;
       }
   }
@@ -391,27 +401,29 @@ void setLedStrip(uint32_t color) {
   }
 }
 
-void clearLedStrip() {
+void clearLedStrip(bool show) {
   for (int i = 0; i < NUM_PIXELS; i++) {
     bracelet.setPixelColor(i, bracelet.Color(0, 0, 0));
   }
 
-  bracelet.show();
+  if(show) {
+    bracelet.show();
+  }
 }
 
 
 void setLedStripPower(bool powerState) {
   ledStripPower = powerState;
 
-  if (powerState) {
+  if (powerState && currentEffectType == NONE) {
     //Restoring original state:
     for (int i = 0; i < NUM_PIXELS; i++) {
       bracelet.setPixelColor(i, ledStripPixelColors[i]);
     }
 
     bracelet.show();
-  } else {
-    clearLedStrip();
+  } else if(!powerState) {
+    clearLedStrip(true);
   }
 }
 
@@ -419,27 +431,36 @@ void setLedStripPower(bool powerState) {
 // LedStrip effects
 //**********************
 
-void processEffects() {
+void processEffects(uint32_t counter) {
+  if(!ledStripPower) {
+    return;
+  }
+
   switch (currentEffectType) {
     case RAINBOW:
       rainbowCycle(10);
       break;
+    case FADE:
+      fadeEffect(counter, 10000);  
+    case CIRCLE:
+      circleEffect(counter, 10000);
   }
 }
 
 //Stolen from example :)
-//TODO non blocking
+uint8_t rainbowIdx = 0;
+
 void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
+  //for (j = 0; j < 256; j++) {  // 5 cycles of all colors on wheel
 
-  for (j = 0; j < 256; j++) {  // 5 cycles of all colors on wheel
-    for (i = 0; i < bracelet.numPixels(); i++) {
-      setLedStripPixel(i, Wheel(((i * 256 / bracelet.numPixels()) + j) & 255));
-    }
-
-    bracelet.show();
-    delay(wait);
+  for (uint8_t i = 0; i < bracelet.numPixels(); i++) {
+    setLedStripPixel(i, Wheel(((i * 256 / bracelet.numPixels()) + rainbowIdx) & 255));
   }
+
+  bracelet.show();
+  delay(wait);
+  
+  rainbowIdx = rainbowIdx >= 256 ? 0 : rainbowIdx+1;
 }
 
 uint32_t Wheel(byte WheelPos) {
@@ -455,3 +476,47 @@ uint32_t Wheel(byte WheelPos) {
   WheelPos -= 170;
   return bracelet.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
+
+uint8_t fadeValue = 255;
+bool fadeUp = false;
+
+void fadeEffect(uint32_t counter, uint32_t everyXCount) {
+  if(counter % everyXCount == 0) {
+    if(fadeUp) {
+      if(fadeValue >= 255) {
+        fadeUp = false;
+      }
+      
+      fadeValue++;
+    }
+    else {
+      if(fadeValue <= 10) {
+        fadeUp = true;
+      }
+
+      fadeValue--;    
+    }
+    
+    bracelet.setBrightness(fadeValue);
+    bracelet.show();
+  }
+}
+
+uint8_t circlePos = 0;
+
+void circleEffect(uint32_t counter, uint32_t everyXCount) {
+  if(counter % everyXCount == 0) {
+    clearLedStrip(false);
+    
+    for(int i = circlePos; i < circlePos + 3; i++) {
+      bracelet.setPixelColor(i % NUM_PIXELS, effectColor);
+    }
+
+    bracelet.show();
+
+    circlePos++;
+
+    //circlePos = circlePos >= NUM_PIXELS ? 0 : circlePos + 1;
+  }
+}
+

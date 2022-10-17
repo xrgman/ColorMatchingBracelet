@@ -83,10 +83,10 @@
 
         </LinearLayout>
 
-        <TextView
+        <com.github.antonpopoff.colorwheel.ColorWheel
+            android:id="@+id/colorWheel"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Place holder color picker"/>
+            android:layout_height="wrap_content"/>
 
         <LinearLayout
             android:layout_width="match_parent"

@@ -7,14 +7,11 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.media.Image;
 import android.os.Bundle;
-import android.util.Size;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -24,34 +21,31 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
+import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.LifecycleOwner;
 
 import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
 import com.example.colormatchingbracelet.LedStrip.LedStripCommand;
-import com.example.colormatchingbracelet.LedStrip.LedStripCommandType;
 import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 import com.example.colormatchingbracelet.MainActivity;
 import com.example.colormatchingbracelet.R;
-import com.example.colormatchingbracelet.Utils;
 import com.example.colormatchingbracelet.bluetooth.BluetoothService;
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.example.colormatchingbracelet.databinding.FragmentHomeBinding;
+import com.github.antonpopoff.colorwheel.ColorWheel;
 import com.google.android.material.slider.Slider;
-import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.lifecycle.LifecycleOwner;
-import androidx.palette.graphics.Palette;
-
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.concurrent.ExecutionException;
+
+import kotlin.Unit;
+import kotlin.jvm.functions.Function1;
 
 public class HomeFragment extends Fragment {
     private FragmentHomeBinding binding;
@@ -71,6 +65,8 @@ public class HomeFragment extends Fragment {
     private Button effectCircleButton;
 
     private boolean powerState = false;
+
+    private ColorWheel colorWheel;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -111,6 +107,20 @@ public class HomeFragment extends Fragment {
         brightnessSlider = root.findViewById(R.id.brightnessSlider);
         brightnessSlider.addOnChangeListener((slider, value, fromUser) -> {
             LedStripCommand.sendBrightnessLevel(bluetoothServiceLink, (int) value);
+        });
+
+        colorWheel = root.findViewById(R.id.colorWheel);
+        colorWheel.setColorChangeListener(color -> {
+//            BraceletInformation braceletInformation = bluetoothServiceLink.getBraceletInformation();
+//
+//
+//            if(braceletInformation != null && braceletInformation.ledStripEffectCurrent != LedStripEffectType.NONE) {
+//                LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.NONE);
+//            }
+
+            LedStripCommand.sendColor(bluetoothServiceLink, color);
+
+            return null;
         });
 
         effectRainbowButton = root.findViewById(R.id.effectRainbowBtn);
@@ -196,13 +206,13 @@ public class HomeFragment extends Fragment {
         BraceletInformation braceletInformation = bluetoothServiceLink.getBraceletInformation();
 
         if(braceletInformation != null) {
-            if(powerState != braceletInformation.ledStripPowerState) {
+            //if(powerState != braceletInformation.ledStripPowerState) {
                 powerButton.setImageResource(braceletInformation.ledStripPowerState && bluetoothServiceLink.isConnected() ? R.drawable.ic_power_on : R.drawable.ic_power);
 
                 //Turn controls on or off:
                 setLedStripControlsEnabled(braceletInformation.ledStripPowerState);
                 powerState = braceletInformation.ledStripPowerState;
-            }
+            //}
 
             //TODO find something for this:
             //brightnessSlider.setValue(5*(Math.round(((braceletInformation.ledStripBrightness*100)/255)/5)));
@@ -221,6 +231,11 @@ public class HomeFragment extends Fragment {
                     break;
                 case FADE:
                     effectFadeButton.setPressed(true);
+                    effectRainbowButton.setPressed(false);
+                    effectCircleButton.setPressed(false);
+                    break;
+                default:
+                    effectFadeButton.setPressed(false);
                     effectRainbowButton.setPressed(false);
                     effectCircleButton.setPressed(false);
                     break;

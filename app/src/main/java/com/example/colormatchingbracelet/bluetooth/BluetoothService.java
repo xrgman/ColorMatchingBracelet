@@ -265,7 +265,7 @@ public class BluetoothService extends Service implements IBluetoothService {
             int[] data = Arrays.copyOfRange(input, 3,3 + messageLength);
 
             //Processing message:
-            processMessage(type, data, messageLength);
+            processMessage(type, data);
 
             //Broadcasting message received:
             broadcastUpdate(ACTION_GATT_MESSAGE_RECEIVED);
@@ -336,15 +336,15 @@ public class BluetoothService extends Service implements IBluetoothService {
      * @param type
      * @param message
      */
-    private void processMessage(MessageType type, int[] data, int length) {
+    private void processMessage(MessageType type, int[] data) {
         switch(type) {
             case STATUS:
-                processStatusMessage(data, length);
+                processStatusMessage(data);
                 break;
         }
     }
 
-    private void processStatusMessage(int[] data, int length) {
+    private void processStatusMessage(int[] data) {
         braceletInformation = new BraceletInformation();
 
         braceletInformation.batteryPercentage = data[0];
