@@ -203,9 +203,9 @@ void sendStatistics() {
 
   //   ui32_to_ui8(ledStripPixelColors[i], colorData);
 
-  // //   for(int j = 0; j < 4; j++) {
-  // //     message += colorData[j];
-  // //   }
+  //   for(int j = 0; j < 4; j++) {
+  //     dataToSend[5 + i*4 + j] = colorData[j];
+  //   }
   // }
 
   //((uint32_t)r << 16) | ((uint32_t)g << 8) | b;

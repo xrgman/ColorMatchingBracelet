@@ -6,6 +6,7 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.Image;
@@ -58,9 +59,6 @@ public class HomeFragment extends Fragment {
     private Button effectCircleButton;
 
     private boolean powerState = false;
-
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private PreviewView previewView;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -198,9 +196,8 @@ public class HomeFragment extends Fragment {
                 powerState = braceletInformation.ledStripPowerState;
             }
 
-            brightnessSlider.setValue(braceletInformation.ledStripBrightness);
-
-
+            //TODO find something for this:
+            //brightnessSlider.setValue(5*(Math.round(((braceletInformation.ledStripBrightness*100)/255)/5)));
 
             //Setting effect button pushed:
             switch(braceletInformation.ledStripEffectCurrent) {
@@ -239,33 +236,40 @@ public class HomeFragment extends Fragment {
             ActivityCompat.requestPermissions(getActivity(), new String[] { Manifest.permission.CAMERA }, 1);
         }
 
-        //Setting up preview:
-        cameraProviderFuture = ProcessCameraProvider.getInstance(getActivity());
-
-        previewView = layout.findViewById(R.id.previewView);
+        //Setting up camera preview:
+        final ProcessCameraProvider[] cameraProvider = new ProcessCameraProvider[1];
+        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(getActivity());;
+        PreviewView previewView = layout.findViewById(R.id.previewView);;
 
         cameraProviderFuture.addListener(() -> {
             try {
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                bindPreview(cameraProvider);
+                cameraProvider[0] = cameraProviderFuture.get();
+                bindPreview(cameraProvider[0], previewView);
 
             } catch (ExecutionException | InterruptedException e) {
-                // No errors need to be handled for this Future.
-                // This should never be reached.
+                //Should not happen :)
             }
         }, ContextCompat.getMainExecutor(getActivity()));
 
 
-        //Registering calibration button
-//        Button calibrationButton = layout.findViewById(R.id.calibrateButton);
-//        Button startButton = layout.findViewById(R.id.startButton);
+        //Action when canceling dialog, unbind the camera:
+        dialog.setOnDismissListener(dialogInterface -> {
+            cameraProvider[0].unbindAll();
+        });
 
+        //Register button action:
+        Button setColorButton = layout.findViewById(R.id.setColorButton);
+
+        setColorButton.setOnClickListener(view -> {
+            //Get current color and apply it to the led strip:
+
+        });
 
         //Showing calibration dialog:
         dialog.show();
     }
 
-    void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
+    void bindPreview(@NonNull ProcessCameraProvider cameraProvider, PreviewView previewView) {
         Preview preview = new Preview.Builder()
                 .build();
 
@@ -276,6 +280,8 @@ public class HomeFragment extends Fragment {
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
         Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
+
+
 
     }
 }
