@@ -8,38 +8,54 @@ public class LedStripCommand {
 
 
     public static void sendPowerMessage(IBluetoothService bluetoothService, boolean powerState) {
-        String message = "";
+        byte[] data = new byte[2];
 
         //Adding type of led strip command:
-        message += (char) LedStripCommandType.POWER.getValue();
+        data[0] = (byte) LedStripCommandType.POWER.getValue();
 
         //Adding power state:
-        message += powerState ? 1 : 0;
+        data[1] = (byte) (powerState ? 1 : 0);
 
-        bluetoothService.sendMessage(MessageType.LEDSTRIP, message);
+        bluetoothService.sendMessage(MessageType.LEDSTRIP, data);
     }
 
     public static void sendBrightnessLevel(IBluetoothService bluetoothService, int brightness) {
-        String message = "";
+        byte[] data = new byte[2];
 
         //Adding type of led strip command:
-        message += (char) LedStripCommandType.BRIGHTNESS.getValue();
+        data[0] = (byte) LedStripCommandType.BRIGHTNESS.getValue();
 
         //Adding power state:
-        message += (char) brightness;
+        data[1] = (byte) brightness;
 
-        bluetoothService.sendMessage(MessageType.LEDSTRIP, message);
+        bluetoothService.sendMessage(MessageType.LEDSTRIP, data);
     }
 
     public static void sendEffect(IBluetoothService bluetoothService, LedStripEffectType type) {
-        String message = "";
+        byte[] data = new byte[2];
 
         //Adding type of led strip command:
-        message += (char) LedStripCommandType.EFFECT.getValue();
+        data[0] = (byte) LedStripCommandType.EFFECT.getValue();
 
         //Adding effect type:
-        message += (char) type.getValue();
+        data[1] = (byte) type.getValue();
 
-        bluetoothService.sendMessage(MessageType.LEDSTRIP, message);
+        bluetoothService.sendMessage(MessageType.LEDSTRIP, data);
+    }
+
+    //For whole strip at once:
+    public static void sendColor(IBluetoothService bluetoothService, int color) {
+        byte[] data = new byte[5];
+
+        //Adding type of led strip command:
+        data[0] = (byte) LedStripCommandType.COLOR.getValue();
+
+        //Adding color to set:
+        data[1] = (byte) (color >> 24);
+        data[2] = (byte) ((color >> 16) & 0xFF);
+        data[3] = (byte) ((color >> 8) & 0xFF);
+        data[4] = (byte) (color & 0xFF);
+
+        bluetoothService.sendMessage(MessageType.LEDSTRIP, data);
     }
 }

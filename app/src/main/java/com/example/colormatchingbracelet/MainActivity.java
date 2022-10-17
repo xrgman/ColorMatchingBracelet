@@ -182,8 +182,8 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
     }
 
     @Override
-    public void sendMessage(MessageType type, String message) {
-        bluetoothService.sendMessage(type, message);
+    public void sendMessage(MessageType type, byte[] data) {
+        bluetoothService.sendMessage(type, data);
     }
 
     @Override

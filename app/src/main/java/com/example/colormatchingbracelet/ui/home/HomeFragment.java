@@ -9,8 +9,11 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.media.Image;
 import android.os.Bundle;
+import android.util.Size;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +24,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
@@ -33,12 +38,14 @@ import com.example.colormatchingbracelet.LedStrip.LedStripCommandType;
 import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 import com.example.colormatchingbracelet.MainActivity;
 import com.example.colormatchingbracelet.R;
+import com.example.colormatchingbracelet.Utils;
 import com.example.colormatchingbracelet.bluetooth.BluetoothService;
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.example.colormatchingbracelet.databinding.FragmentHomeBinding;
 import com.google.android.material.slider.Slider;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.palette.graphics.Palette;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -236,15 +243,51 @@ public class HomeFragment extends Fragment {
             ActivityCompat.requestPermissions(getActivity(), new String[] { Manifest.permission.CAMERA }, 1);
         }
 
+        //Finding current color view:
+        View currentColorView = layout.findViewById(R.id.rectangle_current_color);
+
+        final int[] averageColor = {Color.WHITE};
+
         //Setting up camera preview:
         final ProcessCameraProvider[] cameraProvider = new ProcessCameraProvider[1];
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(getActivity());;
-        PreviewView previewView = layout.findViewById(R.id.previewView);;
+        PreviewView previewView = layout.findViewById(R.id.previewView);
 
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider[0] = cameraProviderFuture.get();
-                bindPreview(cameraProvider[0], previewView);
+
+                ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
+                        // enable the following line if RGBA output is needed.
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                        .setTargetResolution(new Size(1280, 720))
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build();
+
+                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(getActivity()), (ImageAnalysis.Analyzer) imageProxy -> {
+                    int rotationDegrees = imageProxy.getImageInfo().getRotationDegrees();
+                    // insert your code here.
+
+                    Bitmap currentPreview = previewView.getBitmap();
+
+                    if(currentPreview != null) {
+                        //Bitmap scaledPreview = Bitmap.createScaledBitmap(currentPreview, 1, 1, false);
+
+                        //int averageColor = scaledPreview.getPixel(0, 0);
+
+                        Palette pal = Palette.from(currentPreview).generate();
+
+                        averageColor[0] = pal.getDominantColor(Color.WHITE);
+
+                        currentColorView.setBackgroundColor(averageColor[0]);
+                    }
+
+                    // after done, release the ImageProxy object
+                    imageProxy.close();
+                });
+
+
+                bindPreview(cameraProvider[0], previewView, imageAnalysis);
 
             } catch (ExecutionException | InterruptedException e) {
                 //Should not happen :)
@@ -257,19 +300,26 @@ public class HomeFragment extends Fragment {
             cameraProvider[0].unbindAll();
         });
 
-        //Register button action:
+        //Register button actions:
         Button setColorButton = layout.findViewById(R.id.setColorButton);
 
         setColorButton.setOnClickListener(view -> {
-            //Get current color and apply it to the led strip:
+            int colorToSend = averageColor[0];
 
+            LedStripCommand.sendColor(bluetoothServiceLink, colorToSend);
+        });
+
+        Button exitDialogButton = layout.findViewById(R.id.exitScanDialogButton);
+
+        exitDialogButton.setOnClickListener(view -> {
+            dialog.dismiss();
         });
 
         //Showing calibration dialog:
         dialog.show();
     }
 
-    void bindPreview(@NonNull ProcessCameraProvider cameraProvider, PreviewView previewView) {
+    void bindPreview(@NonNull ProcessCameraProvider cameraProvider, PreviewView previewView, ImageAnalysis imageAnalysis) {
         Preview preview = new Preview.Builder()
                 .build();
 
@@ -279,9 +329,10 @@ public class HomeFragment extends Fragment {
 
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
-        Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
 
 
 
+
+        cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, imageAnalysis, preview);
     }
 }

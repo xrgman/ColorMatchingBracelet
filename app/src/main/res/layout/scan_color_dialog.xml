@@ -48,7 +48,7 @@
 
         <FrameLayout
             android:id="@+id/testContainer"
-            android:layout_height="410sp"
+            android:layout_height="420sp"
             android:layout_width="match_parent">
             <androidx.camera.view.PreviewView
                 android:id="@+id/previewView"
@@ -63,12 +63,28 @@
             android:layout_marginTop="20dp"
             android:layout_marginBottom="20dp">
 
-            <Button
-                android:id="@+id/setColorButton"
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Set color"
-                android:layout_alignParentEnd="true"/>
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:layout_alignParentEnd="true">
+
+                <Button
+                    android:id="@+id/setColorButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Set color"
+                    android:layout_marginEnd="10sp"/>
+
+                <Button
+                    android:id="@+id/exitScanDialogButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Close"/>
+
+            </LinearLayout>
+
+
 
         </RelativeLayout>
 

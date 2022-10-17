@@ -61,6 +61,7 @@ bool oldDeviceConnected = false;
 void processLedstripCommand(std::string command);
 void clearLedStrip();
 void setLedStripPixel(int pixel, uint32_t color);
+void setLedStrip(uint32_t color);
 
 void ui32_to_ui8(uint32_t source, uint8_t *dest) 
 {
@@ -68,6 +69,17 @@ void ui32_to_ui8(uint32_t source, uint8_t *dest)
 	dest[1] = (uint8_t)((source >> 16) & 0xFF);
 	dest[2] = (uint8_t)((source >> 8) & 0xFF);
 	dest[3] = (uint8_t)(source & 0xFF);
+}
+
+uint32_t to_ui32(uint8_t *pData) 
+{
+	uint32_t ret = 0;
+	ret |= (pData[0] << 24);
+	ret |= (pData[1] << 16);
+	ret |= (pData[2] << 8);
+	ret |= pData[3];
+
+	return ret;
 }
 
 /**
@@ -94,16 +106,19 @@ class MyCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic) {
     std::string rxValue = pCharacteristic->getValue();
 
-    if (rxValue.length() > 2) {
+    uint8_t* data = pCharacteristic->getData();
+    uint8_t dataSize = pCharacteristic->getLength();
+    uint8_t checksumComp = 0;
 
+    if(dataSize > 2) {
       //Looking if start character is correct, else discard:
-      if (rxValue[0] != '?') {
-        Serial.println("Message with invalid start character: " + rxValue[0]);
+      if (data[0] != 63) {
+        Serial.println("Message with invalid start character: " + data[0]);
         return;
       }
 
       //Extracting type:
-      int typeId = int(rxValue[1]);
+      uint8_t typeId = data[1];
 
       //Checking if type exists:
       if (typeId > LEDSTRIP) {
@@ -115,37 +130,43 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       Serial.println(typeId);
 
       //Grabbing message length:
-      int messageLength = int(rxValue[2]);
+      uint8_t dataLength = data[2];
 
-      //Grabbing message:
-      std::string message = rxValue.substr(3, messageLength);
+      //Do something with message:
+
+      //Checksum:
+      uint8_t checksum = data[dataSize - 1];
+
+      for(int i = 0; i < dataSize - 1; i ++) {
+        checksumComp ^= data[i];
+      }
+
+      if(checksumComp != checksum) {
+        Serial.println("Invalid checksum, dropping message.");
+        return;
+      }
+
+      //Grabbing data:
+      uint8_t actualData[dataLength]; //3 + length
+
+      memcpy(actualData, &data[3], dataLength);
 
       //Switching on message type:
       switch (typeId) {
         case DEBUG:
           Serial.print("Debug message: ");
 
-          for (int i = 0; i < message.length(); i++) {
-            Serial.print(message[i]);
+          for (int i = 0; i < dataLength; i++) {
+            Serial.print((char) actualData[i]);
           }
 
           Serial.println("");
 
           break;
         case LEDSTRIP:
-          processLedstripCommand(message);
+          processLedstripCommand(actualData, dataLength);
           break;
-      }
-
-      // Serial.println("*********");
-      // Serial.print("Received Value: ");
-
-      // for (int i = 0; i < rxValue.length(); i++){
-      //     Serial.print(rxValue[i]);
-      // }
-
-      // Serial.println();
-      // Serial.println("*********");
+      }      
     }
   }
 };
@@ -298,22 +319,48 @@ void loop() {
   processEffects();
 }
 
-void processLedstripCommand(std::string command) {
+void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
   //Extracting type:
-  int typeId = int(command[0]);
+  int typeId = data[0];
 
   switch (typeId) {
     case POWER:
       {
-        bool powerValue = command[1] == '1';
+        bool powerValue = data[1] == 1;
 
         setLedStripPower(powerValue);
 
         break;
       }
+    case COLOR:
+      {
+        uint8_t colorData[4];
+
+        //Extract color data:
+        colorData[0] = data[1];
+        colorData[1] = data[2];
+        colorData[2] = data[3];
+        colorData[3] = data[4];    
+
+        //Translate to uint32_t color:
+        uint32_t color = to_ui32(colorData);
+
+        setLedStrip(color);
+
+        bracelet.show();
+
+        Serial.println("Color command received");
+        Serial.print("Color: ");
+        Serial.println(color);
+
+
+        
+
+        break;
+      }       
     case BRIG:
       {
-        int brightness = int(command[1]);
+        int brightness = data[1];
 
         currentBrightness = ((float)brightness / 100) * 255;
 
@@ -324,10 +371,10 @@ void processLedstripCommand(std::string command) {
         bracelet.show();
 
         break;
-      }
+      }      
     case EFFECT:
       {
-        int effectTypeId = int(command[1]);
+        int effectTypeId = data[1];
 
         //Setting current effect:
         currentEffectType = (LedStripEffectType)effectTypeId;
@@ -342,6 +389,12 @@ void setLedStripPixel(int pixel, uint32_t color) {
     ledStripPixelColors[pixel] = color;
 
     bracelet.setPixelColor(pixel, color);
+  }
+}
+
+void setLedStrip(uint32_t color) {
+  for(int i = 0; i < NUM_PIXELS; i++) {
+    setLedStripPixel(i, color);
   }
 }
 

@@ -145,23 +145,38 @@ public class BluetoothService extends Service implements IBluetoothService {
 
 
     /**
-     * Start | Type | length | data | checksum TODO
+     * Start | Type | length | data | checksum
      */
     @Override
     @SuppressLint("MissingPermission")
-    public void sendMessage(MessageType type, String message) {
-        String msgToSend = "?";
+    public void sendMessage(MessageType type, byte[] data) {
+        int length = 4 + data.length;
+        byte[] dataToSend = new byte[length];
+        int checkSum = 0;
 
-        //Adding type:
-        msgToSend += (char) type.getValue();
+        //Start character:
+        dataToSend[0] = '?';
+        checkSum ^= 63;
 
-        //Adding message length:
-        msgToSend += (char) message.length();
+        //Message type:
+        dataToSend[1] = (byte) type.getValue();
+        checkSum ^= type.getValue();
 
-        //Adding message:
-        msgToSend += message;
+        //Message length:
+        dataToSend[2] = (byte) data.length;
+        checkSum ^= data.length;
 
-        bluetoothNotifyCharacteristic.setValue(msgToSend.getBytes());
+        //Data:
+        for(int i = 0; i < data.length; i++) {
+            dataToSend[3 + i] = data[i];
+
+            checkSum ^= data[i];
+        }
+
+        //Checksum:
+        dataToSend[length - 1] = (byte) checkSum;
+
+        bluetoothNotifyCharacteristic.setValue(dataToSend);
 
         bluetoothGatt.writeCharacteristic(bluetoothNotifyCharacteristic);
     }
