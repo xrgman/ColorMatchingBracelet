@@ -21,6 +21,15 @@
             android:layout_marginTop="5dp"
             android:textAlignment="center"/>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select the color you want in the preview below"
+            android:textColor="@color/headerColor"
+            android:textSize="15sp"
+            android:layout_marginTop="5dp"
+            android:textAlignment="center"/>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -43,7 +52,6 @@
                 android:layout_alignParentTop="true"
                 android:background="#DDDDDD"
                 android:visibility="visible"/>
-
         </LinearLayout>
 
         <FrameLayout
@@ -65,7 +73,7 @@
 
             <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_alignParentEnd="true">
 
@@ -83,12 +91,7 @@
                     android:text="Close"/>
 
             </LinearLayout>
-
-
-
         </RelativeLayout>
-
-
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -348,14 +348,7 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
         setLedStrip(color);
 
         bracelet.show();
-
-        Serial.println("Color command received");
-        Serial.print("Color: ");
-        Serial.println(color);
-
-
         
-
         break;
       }       
     case BRIG:

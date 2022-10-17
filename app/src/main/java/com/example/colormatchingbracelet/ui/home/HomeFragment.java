@@ -3,6 +3,7 @@ package com.example.colormatchingbracelet.ui.home;
 import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -15,6 +16,7 @@ import android.media.Image;
 import android.os.Bundle;
 import android.util.Size;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -58,7 +60,10 @@ public class HomeFragment extends Fragment {
     private ImageView powerButton;
     private Slider brightnessSlider;
     private TextView disconnectedTxt;
-    private ImageView colorScanButton;
+
+    //Camera fields:
+    private ProcessCameraProvider cameraProvider;
+    private int selectedColor = Color.WHITE;
 
     //Effect buttons:
     private Button effectRainbowButton;
@@ -96,9 +101,8 @@ public class HomeFragment extends Fragment {
             LedStripCommand.sendPowerMessage(bluetoothServiceLink, !bluetoothServiceLink.getBraceletInformation().ledStripPowerState);
         });
 
-        colorScanButton = root.findViewById(R.id.colorScanButton);
+        ImageView colorScanButton = root.findViewById(R.id.colorScanButton);
         colorScanButton.setOnClickListener(view -> {
-            //Open popup with camera view and color scanner :)
             createScanColorDialog();
         });
 
@@ -131,9 +135,6 @@ public class HomeFragment extends Fragment {
         });
 
         setBluetoothEnabled(bluetoothServiceLink.isConnected());
-
-
-
 
         return root;
     }
@@ -227,6 +228,7 @@ public class HomeFragment extends Fragment {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private void createScanColorDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
@@ -234,7 +236,6 @@ public class HomeFragment extends Fragment {
         View layout = inflater.inflate(R.layout.scan_color_dialog, null);
 
         builder.setView(layout);
-        //builder.setCancelable(false);
 
         AlertDialog dialog = builder.create();
 
@@ -246,48 +247,15 @@ public class HomeFragment extends Fragment {
         //Finding current color view:
         View currentColorView = layout.findViewById(R.id.rectangle_current_color);
 
-        final int[] averageColor = {Color.WHITE};
-
         //Setting up camera preview:
-        final ProcessCameraProvider[] cameraProvider = new ProcessCameraProvider[1];
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(getActivity());;
         PreviewView previewView = layout.findViewById(R.id.previewView);
 
         cameraProviderFuture.addListener(() -> {
             try {
-                cameraProvider[0] = cameraProviderFuture.get();
+                cameraProvider = cameraProviderFuture.get();
 
-                ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
-                        // enable the following line if RGBA output is needed.
-                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                        .setTargetResolution(new Size(1280, 720))
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build();
-
-                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(getActivity()), (ImageAnalysis.Analyzer) imageProxy -> {
-                    int rotationDegrees = imageProxy.getImageInfo().getRotationDegrees();
-                    // insert your code here.
-
-                    Bitmap currentPreview = previewView.getBitmap();
-
-                    if(currentPreview != null) {
-                        //Bitmap scaledPreview = Bitmap.createScaledBitmap(currentPreview, 1, 1, false);
-
-                        //int averageColor = scaledPreview.getPixel(0, 0);
-
-                        Palette pal = Palette.from(currentPreview).generate();
-
-                        averageColor[0] = pal.getDominantColor(Color.WHITE);
-
-                        currentColorView.setBackgroundColor(averageColor[0]);
-                    }
-
-                    // after done, release the ImageProxy object
-                    imageProxy.close();
-                });
-
-
-                bindPreview(cameraProvider[0], previewView, imageAnalysis);
+                bindPreview(cameraProvider, previewView);
 
             } catch (ExecutionException | InterruptedException e) {
                 //Should not happen :)
@@ -295,31 +263,48 @@ public class HomeFragment extends Fragment {
         }, ContextCompat.getMainExecutor(getActivity()));
 
 
-        //Action when canceling dialog, unbind the camera:
-        dialog.setOnDismissListener(dialogInterface -> {
-            cameraProvider[0].unbindAll();
+        //Click event, select color clicked by the user:
+        previewView.setOnTouchListener((view, motionEvent) -> {
+            if(motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
+                int x = (int) motionEvent.getX();
+                int y = (int) motionEvent.getY();
+
+                //Grab current image and extract color:
+                Bitmap current = previewView.getBitmap();
+
+                selectedColor = current.getPixel(x, y);
+
+                currentColorView.setBackgroundColor(selectedColor);
+            }
+
+            return false;
         });
 
-        //Register button actions:
+
+        //Register set color button:
         Button setColorButton = layout.findViewById(R.id.setColorButton);
 
         setColorButton.setOnClickListener(view -> {
-            int colorToSend = averageColor[0];
-
-            LedStripCommand.sendColor(bluetoothServiceLink, colorToSend);
+            LedStripCommand.sendColor(bluetoothServiceLink, selectedColor);
         });
 
+        //Register exit dialog button, does the same as just clicking next to the dialog:
         Button exitDialogButton = layout.findViewById(R.id.exitScanDialogButton);
 
         exitDialogButton.setOnClickListener(view -> {
             dialog.dismiss();
         });
 
+        //Action when canceling dialog, unbind the camera:
+        dialog.setOnDismissListener(dialogInterface -> {
+            cameraProvider.unbindAll();
+        });
+
         //Showing calibration dialog:
         dialog.show();
     }
 
-    void bindPreview(@NonNull ProcessCameraProvider cameraProvider, PreviewView previewView, ImageAnalysis imageAnalysis) {
+    void bindPreview(@NonNull ProcessCameraProvider cameraProvider, PreviewView previewView) {
         Preview preview = new Preview.Builder()
                 .build();
 
@@ -329,10 +314,6 @@ public class HomeFragment extends Fragment {
 
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
-
-
-
-
-        cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, imageAnalysis, preview);
+        cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
     }
 }
