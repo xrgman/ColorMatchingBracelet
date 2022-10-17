@@ -2,10 +2,12 @@ package com.example.colormatchingbracelet.ui.home;
 
 import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.Image;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -20,6 +22,7 @@ import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.Preview;
 import androidx.camera.view.PreviewView;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
@@ -130,21 +133,6 @@ public class HomeFragment extends Fragment {
         return root;
     }
 
-    void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
-
-
-        Preview preview = new Preview.Builder()
-                .build();
-
-        CameraSelector cameraSelector = new CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                .build();
-
-        preview.setSurfaceProvider(previewView.getSurfaceProvider());
-
-        Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
-    }
-
     @Override
     public void onResume() {
         super.onResume();
@@ -210,6 +198,10 @@ public class HomeFragment extends Fragment {
                 powerState = braceletInformation.ledStripPowerState;
             }
 
+            brightnessSlider.setValue(braceletInformation.ledStripBrightness);
+
+
+
             //Setting effect button pushed:
             switch(braceletInformation.ledStripEffectCurrent) {
                 case RAINBOW:
@@ -238,11 +230,16 @@ public class HomeFragment extends Fragment {
         View layout = inflater.inflate(R.layout.scan_color_dialog, null);
 
         builder.setView(layout);
-        builder.setCancelable(false);
+        //builder.setCancelable(false);
 
         AlertDialog dialog = builder.create();
 
-        //Camera:
+        //Asking camera permission
+        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(getActivity(), new String[] { Manifest.permission.CAMERA }, 1);
+        }
+
+        //Setting up preview:
         cameraProviderFuture = ProcessCameraProvider.getInstance(getActivity());
 
         previewView = layout.findViewById(R.id.previewView);
@@ -251,6 +248,7 @@ public class HomeFragment extends Fragment {
             try {
                 ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
                 bindPreview(cameraProvider);
+
             } catch (ExecutionException | InterruptedException e) {
                 // No errors need to be handled for this Future.
                 // This should never be reached.
@@ -265,5 +263,19 @@ public class HomeFragment extends Fragment {
 
         //Showing calibration dialog:
         dialog.show();
+    }
+
+    void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
+        Preview preview = new Preview.Builder()
+                .build();
+
+        CameraSelector cameraSelector = new CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .build();
+
+        preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
+        Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
+
     }
 }

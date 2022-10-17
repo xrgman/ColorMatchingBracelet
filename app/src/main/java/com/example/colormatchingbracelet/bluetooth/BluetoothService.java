@@ -23,6 +23,7 @@ import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -198,16 +199,28 @@ public class BluetoothService extends Service implements IBluetoothService {
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            String input = characteristic.getStringValue(0);
+            byte[] inputRaw = characteristic.getValue();
+            int[] input = new int[inputRaw.length];
+
+            //Translate to unsigned bytes:
+            for(int i =0; i < inputRaw.length; i++) {
+                input[i] = Byte.toUnsignedInt(inputRaw[i]);
+            }
+
+            //Checking if minimum fields are there:
+            if(input.length < 4) {
+                Log.e("BluetoothService", "Not enough fields");
+                return;
+            }
 
             //Checking start character
-            if(!input.startsWith("?")) {
-                Log.e("BluetoothService", "Invalid start character: " + input.charAt(0) + ", skipping message");
+            if(input[0] != 63) { //Start character '?' (63)
+                Log.e("BluetoothService", "Invalid start character: " + (char) input[0] + ", skipping message");
                 return;
             }
 
             //Extracting type:
-            int typeId = (int) input.charAt(1);
+            int typeId = input[1];
 
             //Checking if type exists:
             if(typeId > MessageType.values().length) {
@@ -218,13 +231,26 @@ public class BluetoothService extends Service implements IBluetoothService {
             MessageType type = MessageType.values()[typeId];
 
             //Grabbing message length:
-            int messageLength = (int) input.charAt(2);
+            int messageLength = input[2];
 
-            //Grabbing message:
-            String message = input.substring(3, 3 + messageLength);
+            //Checking checksum:
+            int checkSum = input[input.length - 1];
+            int checkSumComp = 0;
+
+            for(int i = 0; i < input.length - 1; i++) {
+                checkSumComp ^= input[i];
+            }
+
+            if(checkSumComp != checkSum) {
+                Log.e("BluetoothService", "Invalid checksum, skipping message");
+                return;
+            }
+
+            //Grabbing data:
+            int[] data = Arrays.copyOfRange(input, 3,3 + messageLength);
 
             //Processing message:
-            processMessage(type, message);
+            processMessage(type, data, messageLength);
 
             //Broadcasting message received:
             broadcastUpdate(ACTION_GATT_MESSAGE_RECEIVED);
@@ -295,20 +321,35 @@ public class BluetoothService extends Service implements IBluetoothService {
      * @param type
      * @param message
      */
-    private void processMessage(MessageType type, String message) {
+    private void processMessage(MessageType type, int[] data, int length) {
         switch(type) {
             case STATUS:
-                processStatusMessage(message);
+                processStatusMessage(data, length);
                 break;
         }
     }
 
-    private void processStatusMessage(String message) {
+    private void processStatusMessage(int[] data, int length) {
         braceletInformation = new BraceletInformation();
 
-        braceletInformation.batteryPercentage = (int) message.charAt(0);
-        braceletInformation.ledStripPowerState = message.charAt(1) == '1';
-        braceletInformation.ledStripEffectCurrent = LedStripEffectType.values()[(int) message.charAt(2)];
+        braceletInformation.batteryPercentage = data[0];
+        braceletInformation.ledStripPowerState = data[1] == '1';
+        braceletInformation.ledStripEffectCurrent = LedStripEffectType.values()[data[2]];
+        braceletInformation.ledStripBrightness = data[3];
+
+
+//        if(braceletInformation.ledStripBrightness == 0) {
+//            int x = 0;
+//        }
+
+        //Extracting current color information:
+        int numOfPixels = data[4];
+
+        for(int i = 0; i < numOfPixels; i++) {
+
+        }
+
+
     }
 
     //#endregion

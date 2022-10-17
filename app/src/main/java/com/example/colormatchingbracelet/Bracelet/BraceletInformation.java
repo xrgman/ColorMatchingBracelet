@@ -9,7 +9,7 @@ import java.util.List;
 public class BraceletInformation {
     public int batteryPercentage;
     public boolean ledStripPowerState;
-    public int ledStripBrightness;
+    public int ledStripBrightness; //Value from 0-100 to save space
     public LedStripEffectType ledStripEffectCurrent;
 
     public List<Color> ledStripColors;
