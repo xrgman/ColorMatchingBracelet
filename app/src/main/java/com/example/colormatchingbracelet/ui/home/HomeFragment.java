@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.media.Image;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -54,6 +55,7 @@ public class HomeFragment extends Fragment {
     private ImageView powerButton;
     private Slider brightnessSlider;
     private TextView disconnectedTxt;
+    private ImageView colorScanButton;
 
     //Camera fields:
     private ProcessCameraProvider cameraProvider;
@@ -97,7 +99,7 @@ public class HomeFragment extends Fragment {
             LedStripCommand.sendPowerMessage(bluetoothServiceLink, !bluetoothServiceLink.getBraceletInformation().ledStripPowerState);
         });
 
-        ImageView colorScanButton = root.findViewById(R.id.colorScanButton);
+        colorScanButton = root.findViewById(R.id.colorScanButton);
         colorScanButton.setOnClickListener(view -> {
             createScanColorDialog();
         });
@@ -194,25 +196,28 @@ public class HomeFragment extends Fragment {
     //Todo make lists
     private void setLedStripControlsEnabled(boolean enabled) {
         brightnessSlider.setEnabled(enabled);
-        //colorScanButton.setEnabled(enabled); TODO enable
+        colorScanButton.setEnabled(enabled);
 
         //Effect buttons:
         effectRainbowButton.setEnabled(enabled);
         effectCircleButton.setEnabled(enabled);
         effectFadeButton.setEnabled(enabled);
+
+        //Color wheel:
+        colorWheel.setEnabled(enabled);
     }
 
     private void updateLayout() {
         BraceletInformation braceletInformation = bluetoothServiceLink.getBraceletInformation();
 
         if(braceletInformation != null) {
-            //if(powerState != braceletInformation.ledStripPowerState) {
+            if(powerState != braceletInformation.ledStripPowerState) {
                 powerButton.setImageResource(braceletInformation.ledStripPowerState && bluetoothServiceLink.isConnected() ? R.drawable.ic_power_on : R.drawable.ic_power);
 
                 //Turn controls on or off:
                 setLedStripControlsEnabled(braceletInformation.ledStripPowerState);
                 powerState = braceletInformation.ledStripPowerState;
-            //}
+            }
 
             //TODO find something for this:
             //brightnessSlider.setValue(5*(Math.round(((braceletInformation.ledStripBrightness*100)/255)/5)));

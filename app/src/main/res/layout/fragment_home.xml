@@ -39,12 +39,32 @@
 
             </LinearLayout>
 
-            <ImageView android:id="@+id/colorScanButton"
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/ic_camera"
-                android:layout_alignParentEnd="true"
-                />
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:layout_alignParentEnd="true">
+
+                <ImageView android:id="@+id/reactToMotionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/ic_waving_hand"
+                    android:layout_marginEnd="5dp"/>
+
+                <ImageView android:id="@+id/reactToMusicButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/ic_music_off"
+                    android:layout_marginEnd="5dp"/>
+
+                <ImageView android:id="@+id/colorScanButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/ic_camera" />
+
+            </LinearLayout>
+
+
 
         </RelativeLayout>
 
