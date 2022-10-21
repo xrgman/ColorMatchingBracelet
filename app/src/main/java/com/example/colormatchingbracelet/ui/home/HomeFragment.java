@@ -11,7 +11,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.media.Image;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -31,7 +30,9 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.example.colormatchingbracelet.Bracelet.BraceletCommand;
 import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
+import com.example.colormatchingbracelet.Bracelet.BraceletMode;
 import com.example.colormatchingbracelet.LedStrip.LedStripCommand;
 import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 import com.example.colormatchingbracelet.MainActivity;
@@ -45,9 +46,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.concurrent.ExecutionException;
 
-import kotlin.Unit;
-import kotlin.jvm.functions.Function1;
-
 public class HomeFragment extends Fragment {
     private FragmentHomeBinding binding;
     private IBluetoothService bluetoothServiceLink;
@@ -56,6 +54,8 @@ public class HomeFragment extends Fragment {
     private Slider brightnessSlider;
     private TextView disconnectedTxt;
     private ImageView colorScanButton;
+    private ImageView reactToMusicButton;
+    private ImageView reactToMotionButton;
 
     //Camera fields:
     private ProcessCameraProvider cameraProvider;
@@ -66,9 +66,10 @@ public class HomeFragment extends Fragment {
     private Button effectFadeButton;
     private Button effectCircleButton;
 
-    private boolean powerState = false;
+    private BraceletInformation previousBraceletInformation;
 
     private ColorWheel colorWheel;
+    private boolean colorWheelInitialized;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -81,7 +82,7 @@ public class HomeFragment extends Fragment {
                 case BluetoothService.ACTION_GATT_DISCONNECTED:
                     setBluetoothEnabled(false);
                     break;
-                case BluetoothService.ACTION_GATT_MESSAGE_RECEIVED:
+                case BluetoothService.ACTION_BRACELETINFORMATION_UPDATE:
                     updateLayout();
                     break;
             }
@@ -104,6 +105,16 @@ public class HomeFragment extends Fragment {
             createScanColorDialog();
         });
 
+        reactToMusicButton = root.findViewById(R.id.reactToMusicButton);
+        reactToMusicButton.setOnClickListener(view -> {
+            BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.MUSIC ? BraceletMode.NORMAL : BraceletMode.MUSIC, null);
+        });
+
+        reactToMotionButton = root.findViewById(R.id.reactToMotionButton);
+        reactToMotionButton.setOnClickListener(view -> {
+            BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.MOTION ? BraceletMode.NORMAL : BraceletMode.MOTION, null);
+        });
+
         disconnectedTxt = root.findViewById(R.id.disconnectedTxt);
 
         brightnessSlider = root.findViewById(R.id.brightnessSlider);
@@ -113,15 +124,11 @@ public class HomeFragment extends Fragment {
 
         colorWheel = root.findViewById(R.id.colorWheel);
         colorWheel.setColorChangeListener(color -> {
-//            BraceletInformation braceletInformation = bluetoothServiceLink.getBraceletInformation();
-//
-//
-//            if(braceletInformation != null && braceletInformation.ledStripEffectCurrent != LedStripEffectType.NONE) {
-//                LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.NONE);
-//            }
+            if(colorWheelInitialized && colorWheel.isEnabled()) {
+                LedStripCommand.sendColor(bluetoothServiceLink, color);
+            }
 
-            LedStripCommand.sendColor(bluetoothServiceLink, color);
-
+            colorWheelInitialized = true;
             return null;
         });
 
@@ -147,6 +154,7 @@ public class HomeFragment extends Fragment {
         });
 
         setBluetoothEnabled(bluetoothServiceLink.isConnected());
+        updateLayout();
 
         return root;
     }
@@ -197,30 +205,44 @@ public class HomeFragment extends Fragment {
     private void setLedStripControlsEnabled(boolean enabled) {
         brightnessSlider.setEnabled(enabled);
         colorScanButton.setEnabled(enabled);
+        reactToMusicButton.setEnabled(enabled);
+        reactToMotionButton.setEnabled(enabled);
 
         //Effect buttons:
         effectRainbowButton.setEnabled(enabled);
         effectCircleButton.setEnabled(enabled);
         effectFadeButton.setEnabled(enabled);
 
-        //Color wheel:
+        //Color wheel (TODO check if this actually does something):
         colorWheel.setEnabled(enabled);
     }
 
     private void updateLayout() {
         BraceletInformation braceletInformation = bluetoothServiceLink.getBraceletInformation();
 
-        if(braceletInformation != null) {
-            if(powerState != braceletInformation.ledStripPowerState) {
+        if(braceletInformation != null) { //TODO: can be removed after fixing message receiving
+            if(previousBraceletInformation == null || previousBraceletInformation.ledStripPowerState != braceletInformation.ledStripPowerState) {
                 powerButton.setImageResource(braceletInformation.ledStripPowerState && bluetoothServiceLink.isConnected() ? R.drawable.ic_power_on : R.drawable.ic_power);
 
                 //Turn controls on or off:
                 setLedStripControlsEnabled(braceletInformation.ledStripPowerState);
-                powerState = braceletInformation.ledStripPowerState;
+            }
+
+            //On mode change:
+            if(previousBraceletInformation == null || previousBraceletInformation.mode != braceletInformation.mode) {
+
+                //Music button:
+                reactToMusicButton.setImageResource(braceletInformation.mode == BraceletMode.MUSIC ? R.drawable.ic_music : R.drawable.ic_music_off);
+
+                //Motion button:
+                reactToMotionButton.setImageResource(braceletInformation.mode == BraceletMode.MOTION ? R.drawable.ic_waving_hand : R.drawable.ic_waving_hand_off);
             }
 
             //TODO find something for this:
             //brightnessSlider.setValue(5*(Math.round(((braceletInformation.ledStripBrightness*100)/255)/5)));
+
+            //Disabling colorwheel for all colors that do not support color changing:
+            colorWheel.setEnabled(braceletInformation.mode.canChangeColor());
 
             //Setting effect button pushed:
             switch(braceletInformation.ledStripEffectCurrent) {
@@ -246,6 +268,8 @@ public class HomeFragment extends Fragment {
                     break;
             }
         }
+
+        previousBraceletInformation = new BraceletInformation(braceletInformation);
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -286,6 +310,7 @@ public class HomeFragment extends Fragment {
         //Click event, select color clicked by the user:
         previewView.setOnTouchListener((view, motionEvent) -> {
             if(motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
+                //TODO: take a bit larger area and take average color of that :)
                 int x = (int) motionEvent.getX();
                 int y = (int) motionEvent.getY();
 
@@ -299,7 +324,6 @@ public class HomeFragment extends Fragment {
 
             return false;
         });
-
 
         //Register set color button:
         Button setColorButton = layout.findViewById(R.id.setColorButton);

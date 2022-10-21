@@ -8,5 +8,9 @@ public interface IBluetoothService {
     void sendMessage(MessageType type, byte[] data);
     int getConnectionState();
     boolean isConnected();
+
+    //Bracelet status:
     BraceletInformation getBraceletInformation();
+    void updateBraceletInformation(BraceletInformation newBraceletInformation);
+
 }

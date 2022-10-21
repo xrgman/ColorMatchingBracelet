@@ -18,7 +18,9 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.example.colormatchingbracelet.Bracelet.BraceletCommand;
 import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
+import com.example.colormatchingbracelet.Bracelet.BraceletMode;
 import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 
 import java.nio.charset.StandardCharsets;
@@ -34,6 +36,7 @@ public class BluetoothService extends Service implements IBluetoothService {
     public final static String ACTION_GATT_DISCONNECTED = "com.example.colormatchingbracelet.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "com.example.colormatchingbracelet.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_GATT_MESSAGE_RECEIVED = "com.example.colormatchingbracelet.ACTION_GATT_MESSAGE_RECEIVED";
+    public final static String ACTION_BRACELETINFORMATION_UPDATE = "com.example.colormatchingbracelet.ACTION_BRACELETINFORMATION_UPDATE";
 
     public final static UUID UUID_SERVICE = UUID.fromString("1cf4fab1-d642-4153-a6f2-bf40db8d6f73");
     public final static UUID UUID_NOTIFY = UUID.fromString("75eb965e-a1e1-4b1d-8bb9-91e562cdb144");
@@ -53,13 +56,14 @@ public class BluetoothService extends Service implements IBluetoothService {
     private BraceletInformation braceletInformation;
 
     public BluetoothService() {
-        braceletInformation = new BraceletInformation();
-        braceletInformation.ledStripPowerState = true; //TODO get this from the bracelet
+
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
+        braceletInformation = new BraceletInformation();
+
         return binder;
     }
 
@@ -202,11 +206,11 @@ public class BluetoothService extends Service implements IBluetoothService {
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
-
                 setSupportedGattServices();
 
                 BluetoothConnection.stopScan();
+
+                broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
             } else {
                 Log.w("BluetoothService", "onServicesDiscovered received: " + status);
             }
@@ -286,6 +290,13 @@ public class BluetoothService extends Service implements IBluetoothService {
         return braceletInformation;
     }
 
+    @Override
+    public void updateBraceletInformation(BraceletInformation newBraceletInformation) {
+        braceletInformation = newBraceletInformation;
+
+        broadcastUpdate(ACTION_BRACELETINFORMATION_UPDATE);
+    }
+
     /**
      * Send update of changes back to main activity.
      * @param action
@@ -296,6 +307,7 @@ public class BluetoothService extends Service implements IBluetoothService {
     }
 
     @SuppressLint("MissingPermission")
+    //TODO check UUID of device :)
     private void setSupportedGattServices() {
         if (bluetoothGatt == null) {
             return;
@@ -333,8 +345,6 @@ public class BluetoothService extends Service implements IBluetoothService {
 
     /**
      * Check type of message and pass data to correct function;
-     * @param type
-     * @param message
      */
     private void processMessage(MessageType type, int[] data) {
         switch(type) {
@@ -345,12 +355,13 @@ public class BluetoothService extends Service implements IBluetoothService {
     }
 
     private void processStatusMessage(int[] data) {
-        braceletInformation = new BraceletInformation();
+        BraceletInformation newBraceletInfo = new BraceletInformation();
 
-        braceletInformation.batteryPercentage = data[0];
-        braceletInformation.ledStripPowerState = data[1] == '1';
-        braceletInformation.ledStripEffectCurrent = LedStripEffectType.values()[data[2]];
-        braceletInformation.ledStripBrightness = data[3];
+        newBraceletInfo.mode = BraceletMode.values()[data[0]];
+        newBraceletInfo.batteryPercentage = data[1];
+        newBraceletInfo.ledStripPowerState = data[2] == '1';
+        newBraceletInfo.ledStripEffectCurrent = LedStripEffectType.values()[data[3]];
+        newBraceletInfo.ledStripBrightness = data[4];
 
 
 //        if(braceletInformation.ledStripBrightness == 0) {
@@ -360,11 +371,7 @@ public class BluetoothService extends Service implements IBluetoothService {
         //Extracting current color information:
         int numOfPixels = data[4];
 
-        for(int i = 0; i < numOfPixels; i++) {
-
-        }
-
-
+        updateBraceletInformation(newBraceletInfo);
     }
 
     //#endregion

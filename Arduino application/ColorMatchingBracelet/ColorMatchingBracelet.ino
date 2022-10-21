@@ -30,14 +30,24 @@ enum messageType {
   INIT,
   STAT,
   DEBUG,
-  LEDSTRIP
+  LEDSTRIP,
+  MODE
+};
+
+enum Mode {
+  NORMAL,
+  EFFECT,
+  EFFECT_NO_COLOR_CHANGE,
+  MUSIC,
+  MOTION,
+  MOTION_EFFECT
 };
 
 enum LedStripCommandType {
   POWER,
   COLOR,
   BRIG,
-  EFFECT
+  LED_EFFECT
 };
 
 enum LedStripEffectType {
@@ -46,6 +56,9 @@ enum LedStripEffectType {
   CIRCLE,
   FADE
 };
+
+//Storing current mode:
+Mode currentMode = NORMAL;
 
 //Storing current effect:
 LedStripEffectType currentEffectType = NONE;
@@ -59,12 +72,12 @@ BLECharacteristic *pTxCharacteristic;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
-
 //Declaring functions:
 void processLedstripCommand(std::string command);
 void clearLedStrip(bool show);
 void setLedStripPixel(int pixel, uint32_t color);
 void setLedStrip(uint32_t color);
+void sendStatistics();
 
 void ui32_to_ui8(uint32_t source, uint8_t *dest) 
 {
@@ -124,7 +137,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       uint8_t typeId = data[1];
 
       //Checking if type exists:
-      if (typeId > LEDSTRIP) {
+      if (typeId > MODE) {
         Serial.println("Invalid message type.");
         return;
       }
@@ -156,6 +169,11 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
       //Switching on message type:
       switch (typeId) {
+        case STAT:
+        {
+          sendStatistics();
+          break;          
+        }
         case DEBUG:
           Serial.print("Debug message: ");
 
@@ -169,6 +187,26 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         case LEDSTRIP:
           processLedstripCommand(actualData, dataLength);
           break;
+        case MODE:
+        {
+          Mode newMode = (Mode) actualData[0];
+
+          Serial.print("Mode changed from ");
+          Serial.print(currentMode);
+          Serial.print(" to ");
+          Serial.println(newMode);
+
+          currentMode = newMode;
+
+          if(newMode == EFFECT || newMode == EFFECT_NO_COLOR_CHANGE || newMode == MOTION_EFFECT) {            
+            int effectTypeId = actualData[2];
+
+            //Setting current effect:
+            currentEffectType = (LedStripEffectType)effectTypeId;
+
+            effectColor = ledStripPixelColors[0]; //Taking first for now :)
+          } 
+        }       
       }      
     }
   }
@@ -210,33 +248,29 @@ void sendMessage(messageType type, uint8_t *dataToSend, uint8_t data_size) {
   Function used to construct statistics message and send it to device.
 **/
 void sendStatistics() {
-  uint8_t size = 5;
+  uint8_t size = 6;
   uint8_t dataToSend[size];
 
-  dataToSend[0] = batteryPercentage;
-  dataToSend[1] = (uint8_t) (ledStripPower ? '1' : '0'); 
-  dataToSend[2] = currentEffectType;
-  dataToSend[3] = currentBrightness;
+  dataToSend[0] = currentMode;
+  dataToSend[1] = batteryPercentage;
+  dataToSend[2] = (uint8_t) (ledStripPower ? '1' : '0'); 
+  dataToSend[3] = currentEffectType;
+  dataToSend[4] = currentBrightness;
 
   //Colors todo dit ff nakijken:
-  dataToSend[4] = NUM_PIXELS;  //First we send length
-
-
-  // for (int i = 0; i < NUM_PIXELS; i++) {
-  //   uint8_t colorData[4];
-
-  //   ui32_to_ui8(ledStripPixelColors[i], colorData);
-
-  //   for(int j = 0; j < 4; j++) {
-  //     dataToSend[5 + i*4 + j] = colorData[j];
-  //   }
-  // }
-
-  //((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
-
+  dataToSend[5] = NUM_PIXELS;  //First we send length
+  
   sendMessage(STAT, dataToSend, size);
 }
 
+//**********************************
+// State machine helper functions
+//**********************************
+
+bool canModeChangeColor(Mode mode) {
+  return mode != EFFECT_NO_COLOR_CHANGE && 
+        mode != MUSIC;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -283,17 +317,6 @@ void setup() {
   Serial.println("Waiting for client connection");
 }
 
-void rainbow(int wait) {
-  for (long firstPixelHue = 0; firstPixelHue < 5 * 65536; firstPixelHue += 256) {
-    for (int i = 0; i < bracelet.numPixels(); i++) {
-      int pixelHue = firstPixelHue + (i * 65536L / bracelet.numPixels());
-      bracelet.setPixelColor(i, bracelet.gamma32(bracelet.ColorHSV(pixelHue)));
-    }
-    bracelet.show();
-    delay(wait);
-  }
-}
-
 uint32_t cnt = 0;
 
 void loop() {
@@ -312,19 +335,44 @@ void loop() {
   }
 
   //Send statistics if connected:
-  if (deviceConnected && cnt % 10000 == 0) {
-    sendStatistics();
-  }
+  // if (deviceConnected && cnt % 10000 == 0) {
+  //   sendStatistics();
+  // }
 
   cnt++;
 
   //Process effect:
-  processEffects(cnt);
+  switch(currentMode) {
+    case EFFECT: 
+    {
+      processEffects(cnt);
+      break;
+    }
+    case EFFECT_NO_COLOR_CHANGE:
+    {
+      processEffects(cnt);
+      break;      
+    }
+    case MOTION: 
+    {
+      processMotion();
+      break;
+    }
+    case MOTION_EFFECT:
+    {
+      processMotion();
+      processEffects(cnt);  
+      break;
+    }
+  }
 }
 
 void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
   //Extracting type:
   int typeId = data[0];
+
+  Serial.print("Processing ledstrip of type: ");
+  Serial.println(typeId);
 
   switch (typeId) {
     case POWER:
@@ -348,7 +396,7 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
         //Translate to uint32_t color:
         uint32_t color = to_ui32(colorData);
 
-        if(currentEffectType == NONE) {
+        if(currentMode == NORMAL || currentMode == MOTION) {
           setLedStrip(color);
         }
 
@@ -373,17 +421,6 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
 
         break;
       }      
-    case EFFECT:
-      {
-        int effectTypeId = data[1];
-
-        //Setting current effect:
-        currentEffectType = (LedStripEffectType)effectTypeId;
-
-        effectColor = ledStripPixelColors[0]; //Taking first for now :)
-
-        break;
-      }
   }
 }
 
@@ -410,7 +447,6 @@ void clearLedStrip(bool show) {
     bracelet.show();
   }
 }
-
 
 void setLedStripPower(bool powerState) {
   ledStripPower = powerState;
@@ -518,5 +554,13 @@ void circleEffect(uint32_t counter, uint32_t everyXCount) {
 
     //circlePos = circlePos >= NUM_PIXELS ? 0 : circlePos + 1;
   }
+}
+
+//****************
+// Motion section
+//****************
+
+void processMotion() {
+  
 }
 

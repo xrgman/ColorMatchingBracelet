@@ -8,11 +8,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.BlendMode;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.View;
 import android.widget.TextView;
 
+import com.example.colormatchingbracelet.Bracelet.BraceletCommand;
 import com.example.colormatchingbracelet.Bracelet.BraceletInformation;
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.example.colormatchingbracelet.bluetooth.MessageType;
@@ -88,7 +90,9 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         NavigationUI.setupWithNavController(navigationView, navController);
 
         navController.addOnDestinationChangedListener((navController1, navDestination, bundle) -> {
-            setNavigationBarValues(navigationView);
+            if(bluetoothService != null) {
+                setNavigationBarValues(navigationView);
+            }
         });
 
         //Requesting permissions:
@@ -128,8 +132,12 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
                 case BluetoothService.ACTION_GATT_CONNECTED:
                     break;
                 case BluetoothService.ACTION_GATT_DISCONNECTED:
+                    setNavigationBarValues(navigationView);
+                    break;
                 case BluetoothService.ACTION_GATT_SERVICES_DISCOVERED:
-                case BluetoothService.ACTION_GATT_MESSAGE_RECEIVED:
+                    BraceletCommand.sendStatusRequest(bluetoothService);
+                    break;
+                case BluetoothService.ACTION_BRACELETINFORMATION_UPDATE:
                     setNavigationBarValues(navigationView);
                     break;
                 default:
@@ -198,7 +206,12 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
 
     @Override
     public BraceletInformation getBraceletInformation() {
-        return bluetoothService != null ? bluetoothService.getBraceletInformation() : null;
+        return bluetoothService == null ? new BraceletInformation() : bluetoothService.getBraceletInformation();
+    }
+
+    @Override
+    public void updateBraceletInformation(BraceletInformation newBraceletInformation) {
+        bluetoothService.updateBraceletInformation(newBraceletInformation);
     }
 
     /**
@@ -235,6 +248,7 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         intentFilter.addAction(BluetoothService.ACTION_GATT_DISCONNECTED);
         intentFilter.addAction(BluetoothService.ACTION_GATT_SERVICES_DISCOVERED);
         intentFilter.addAction(BluetoothService.ACTION_GATT_MESSAGE_RECEIVED);
+        intentFilter.addAction(BluetoothService.ACTION_BRACELETINFORMATION_UPDATE);
         return intentFilter;
     }
 }

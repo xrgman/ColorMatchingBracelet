@@ -4,7 +4,8 @@ public enum MessageType {
     INIT(0),
     STATUS(1),
     DEBUG(2),
-    LEDSTRIP(3);
+    LEDSTRIP(3),
+    MODE(4);
 
     private final int value;
 

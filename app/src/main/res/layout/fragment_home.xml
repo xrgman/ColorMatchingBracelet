@@ -48,7 +48,7 @@
                 <ImageView android:id="@+id/reactToMotionButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/ic_waving_hand"
+                    android:background="@drawable/ic_waving_hand_off"
                     android:layout_marginEnd="5dp"/>
 
                 <ImageView android:id="@+id/reactToMusicButton"
