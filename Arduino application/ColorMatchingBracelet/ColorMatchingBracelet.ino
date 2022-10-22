@@ -27,7 +27,6 @@ uint8_t batteryPercentage;
 
 //Defining message types:
 enum messageType {
-  INIT,
   STAT,
   DEBUG,
   LEDSTRIP,

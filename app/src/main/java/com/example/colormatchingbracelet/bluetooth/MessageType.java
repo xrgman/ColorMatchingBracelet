@@ -1,11 +1,10 @@
 package com.example.colormatchingbracelet.bluetooth;
 
 public enum MessageType {
-    INIT(0),
-    STATUS(1),
-    DEBUG(2),
-    LEDSTRIP(3),
-    MODE(4);
+    STATUS(0),
+    DEBUG(1),
+    LEDSTRIP(2),
+    MODE(3);
 
     private final int value;
 
