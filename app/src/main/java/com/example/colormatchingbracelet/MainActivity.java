@@ -172,6 +172,16 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
             missingPermissions.add(Manifest.permission.BLUETOOTH_SCAN);
         }
 
+        //Coarse location
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
+
+        //Fine location
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+
         //Asking permissions:
         if(missingPermissions.size() > 0) {
             ActivityCompat.requestPermissions(this, missingPermissions.toArray(new String[missingPermissions.size()]), 1);
