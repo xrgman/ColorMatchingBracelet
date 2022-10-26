@@ -6,6 +6,9 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
+// MPU9250 by hideakitai
+#include <MPU9250.h>
+
 #define SERVICE_UUID "1cf4fab1-d642-4153-a6f2-bf40db8d6f73"  // UART service UUID
 #define CHARACTERISTIC_UUID_RX "75eb965e-a1e1-4b1d-8bb9-91e562cdb144"
 #define CHARACTERISTIC_UUID_TX "aba19161-392b-4bed-9450-3a238abd0040"
@@ -30,7 +33,9 @@ enum messageType {
   STAT,
   DEBUG,
   LEDSTRIP,
-  MODE
+  MODE,
+  CALIBRATE,
+  _NUM_MESSAGE_TYPES
 };
 
 enum Mode {
@@ -70,6 +75,9 @@ BLEServer *pServer = NULL;
 BLECharacteristic *pTxCharacteristic;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
+
+// MPU
+MPU9250 mpu;
 
 //Declaring functions:
 void processLedstripCommand(std::string command);
@@ -136,7 +144,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       uint8_t typeId = data[1];
 
       //Checking if type exists:
-      if (typeId > MODE) {
+      if (typeId >= _NUM_MESSAGE_TYPES) {
         Serial.println("Invalid message type.");
         return;
       }
@@ -205,6 +213,12 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
             effectColor = ledStripPixelColors[0]; //Taking first for now :)
           } 
+        }
+        case CALIBRATE: {
+          Serial.println("Calibrating MPU");
+          mpu.calibrateAccelGyro();
+          Serial.println("MPU is calibrated");
+          break;
         }       
       }      
     }
@@ -283,6 +297,13 @@ void setup() {
   //Set all pixels to white:
   for (int i = 0; i < NUM_PIXELS; i++) {
     setLedStripPixel(i, bracelet.Color(255, 255, 255));
+  }
+  
+  //Initialize I2C and MPU
+  Wire.begin();
+
+  if (!mpu.setup(0x68)) {
+    Serial.println("Failed to initialize MPU");
   }
 
   //Settings variables:

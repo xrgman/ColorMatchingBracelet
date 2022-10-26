@@ -30,7 +30,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
     private TextView connStatusBlt;
     private Button connectBltBtn;
-    private Button test;
+    private Button calibrateButton;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -56,6 +56,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
         connStatusBlt = root.findViewById(R.id.bluetoothConnStatus);
         connectBltBtn = root.findViewById(R.id.buttonConnBlt);
+        calibrateButton = root.findViewById(R.id.buttonCalibrate);
 
         Handler handler = new Handler();
 
@@ -135,6 +136,10 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
             connectBltBtn.setOnClickListener(view -> {
                 bluetoothServiceLink.disconnect();
+            });
+
+            calibrateButton.setOnClickListener(view -> {
+                bluetoothServiceLink.sendMessage(MessageType.CALIBRATE, new byte[0]);
             });
         }
         else{
