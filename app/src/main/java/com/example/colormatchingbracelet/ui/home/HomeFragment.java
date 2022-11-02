@@ -62,8 +62,10 @@ public class HomeFragment extends Fragment {
 
     //Effect buttons:
     private Button effectRainbowButton;
-    private Button effectFadeButton;
     private Button effectCircleButton;
+    private Button effectTrailButton;
+    private Button effectCompassButton;
+    private Button effectTemperatureButton;
 
     private BraceletInformation previousBraceletInformation;
 
@@ -133,6 +135,13 @@ public class HomeFragment extends Fragment {
             LedStripCommand.sendEffect(bluetoothServiceLink, type);
         });
 
+        effectTrailButton = root.findViewById(R.id.effectTrailBtn);
+        effectTrailButton.setOnClickListener(view -> {
+            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.TRAIL : LedStripEffectType.NONE;
+
+            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+        });
+
         effectCircleButton = root.findViewById(R.id.effectCircleBtn);
         effectCircleButton.setOnClickListener(view -> {
             LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.CIRCLE : LedStripEffectType.NONE;
@@ -140,9 +149,16 @@ public class HomeFragment extends Fragment {
             LedStripCommand.sendEffect(bluetoothServiceLink, type);
         });
 
-        effectFadeButton = root.findViewById(R.id.effectFadeBtn);
-        effectFadeButton.setOnClickListener(view -> {
-            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.FADE : LedStripEffectType.NONE;
+        effectCompassButton = root.findViewById(R.id.effectCompassBtn);
+        effectCompassButton.setOnClickListener(view -> {
+            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.COMPASS : LedStripEffectType.NONE;
+
+            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+        });
+
+        effectTemperatureButton = root.findViewById(R.id.effectTempBtn);
+        effectTemperatureButton.setOnClickListener(view -> {
+            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.TEMPERATURE : LedStripEffectType.NONE;
 
             LedStripCommand.sendEffect(bluetoothServiceLink, type);
         });
@@ -203,8 +219,10 @@ public class HomeFragment extends Fragment {
 
         //Effect buttons:
         effectRainbowButton.setEnabled(enabled);
+        effectTrailButton.setEnabled(enabled);
         effectCircleButton.setEnabled(enabled);
-        effectFadeButton.setEnabled(enabled);
+        effectCompassButton.setEnabled(enabled);
+        effectTemperatureButton.setEnabled(enabled);
 
         //Color wheel (TODO check if this actually does something):
         colorWheel.setEnabled(enabled);
@@ -233,30 +251,6 @@ public class HomeFragment extends Fragment {
 
             //Disabling colorwheel for all colors that do not support color changing:
             colorWheel.setEnabled(braceletInformation.mode.canChangeColor());
-
-            //Setting effect button pushed:
-            switch(braceletInformation.ledStripEffectCurrent) {
-                case RAINBOW:
-                    effectRainbowButton.setPressed(true);
-                    effectCircleButton.setPressed(false);
-                    effectFadeButton.setPressed(false);
-                    break;
-                case CIRCLE:
-                    effectCircleButton.setPressed(true);
-                    effectRainbowButton.setPressed(false);
-                    effectFadeButton.setPressed(false);
-                    break;
-                case FADE:
-                    effectFadeButton.setPressed(true);
-                    effectRainbowButton.setPressed(false);
-                    effectCircleButton.setPressed(false);
-                    break;
-                default:
-                    effectFadeButton.setPressed(false);
-                    effectRainbowButton.setPressed(false);
-                    effectCircleButton.setPressed(false);
-                    break;
-            }
         }
 
         previousBraceletInformation = new BraceletInformation(braceletInformation);

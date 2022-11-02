@@ -129,19 +129,39 @@
                     android:text="Rainbow" />
 
                 <Button
+                    android:id="@+id/effectTrailBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10sp"
+                    android:text="Trail" />
+
+                <Button
                     android:id="@+id/effectCircleBtn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10sp"
-                    android:text="Circle"/>
+                    android:text="Circle" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/effectFadeBtn"
+                    android:id="@+id/effectCompassBtn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10sp"
-                    android:text="Fade"/>
+                    android:layout_weight="1"
+                    android:text="Compass" />
 
+                <Button
+                    android:id="@+id/effectTempBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Temperature" />
             </LinearLayout>
 
         </LinearLayout>

@@ -2,9 +2,8 @@ package com.example.colormatchingbracelet.LedStrip;
 
 public enum LedStripCommandType {
     POWER(0),
-    COLOR(1),
-    BRIGHTNESS(2),
-    EFFECT(3);
+    BRIGHTNESS(1),
+    COLOR(2);
 
     private final int value;
 

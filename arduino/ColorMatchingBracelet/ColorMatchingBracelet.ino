@@ -28,34 +28,35 @@
 #define GESTURE_LENGTH 50
 #define GESTURE_INTERVAL_MS (GESTURE_DURATION_MS / GESTURE_LENGTH)
 
-enum messageType {
-  STAT,
-  DEBUG,
-  LEDSTRIP,
-  MODE,
-  CALIBRATE,
+enum MessageType {
+  MESSAGE_STATISTICS,
+  MESSAGE_DEBUG,
+  MESSAGE_LED_STRIP,
+  MESSAGE_MODE,
+  MESSAGE_CALIBRATE,
   _NUM_MESSAGE_TYPES
 };
 
 enum Mode {
-  NORMAL,
-  EFFECT,
-  EFFECT_NO_COLOR_CHANGE,
-  GESTURE
+  MODE_NORMAL,
+  MODE_EFFECT,
+  MODE_EFFECT_NO_COLOR_CHANGE,
+  MODE_GESTURE
 };
 
 enum LedStripCommandType {
-  POWER,
-  COLOR,
-  BRIG,
-  LED_EFFECT
+  LED_STRIP_COMMAND_POWER,
+  LED_STRIP_COMMAND_BRIGHTNESS,
+  LED_STRIP_COMMAND_COLOR
 };
 
 enum LedStripEffectType {
-  NONE,
-  RAINBOW,
-  CIRCLE,
-  FADE
+  LED_STRIP_EFFECT_NONE,
+  LED_STRIP_EFFECT_RAINBOW,
+  LED_STRIP_EFFECT_TRAIL,
+  LED_STRIP_EFFECT_CIRCLE,
+  LED_STRIP_EFFECT_COMPASS,
+  LED_STRIP_EFFECT_TEMPERATURE
 };
 
 BLEServer* bleServer;
@@ -66,29 +67,23 @@ bool bleDeviceConnected = false;
 MPU9250 mpu;
 
 Adafruit_NeoPixel ledStrip(LED_STRIP_NUM_LEDS, LED_STRIP_PIN, NEO_GRB + NEO_KHZ800);
-uint32_t ledStripColors[LED_STRIP_NUM_LEDS];
 bool ledStripPower;
-uint8_t currentBrightness = 255;
+uint8_t ledStripBrightness;
+uint8_t ledStripColor[3];
+LedStripEffectType ledStripEffect = LED_STRIP_EFFECT_NONE;
 
 uint8_t gesture_length = 0;
 uint32_t gesture_last_interval_ms;
 float gesture[150];
 
-//Effect fields:
-uint32_t effectColor; 
-
 //Battery status:
 uint8_t batteryPercentage;
 
 //Storing current mode:
-Mode currentMode = NORMAL;
-
-//Storing current effect:
-LedStripEffectType currentEffectType = NONE;
+Mode currentMode = MODE_NORMAL;
 
 void calibrateAcc();
-void processLedstripCommand(uint8_t* data, uint8_t dataLength);
-void clearLedStrip(bool show);
+void processLedStripCommand(uint8_t* data, uint8_t dataLength);
 void sendStatistics();
 
 class BleServerCallbacks : public BLEServerCallbacks {
@@ -144,10 +139,10 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
     uint8_t* payload = &data[3];
 
     switch (messageType) {
-      case STAT: {
+      case MESSAGE_STATISTICS: {
         sendStatistics();          
       } break;
-      case DEBUG: {
+      case MESSAGE_DEBUG: {
         Serial.print("Debug message: ");
 
         for (int i = 0; i < payloadSize; i++) {
@@ -157,10 +152,10 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
         Serial.println("");
 
       } break;
-      case LEDSTRIP: {
-        processLedstripCommand(payload, payloadSize);
+      case MESSAGE_LED_STRIP: {
+        processLedStripCommand(payload, payloadSize);
       } break;
-      case MODE: {
+      case MESSAGE_MODE: {
         Mode newMode = (Mode) payload[0];
 
         Serial.print("Mode changed from ");
@@ -170,16 +165,11 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
 
         currentMode = newMode;
 
-        if(newMode == EFFECT || newMode == EFFECT_NO_COLOR_CHANGE) {            
-          int effectTypeId = payload[2];
-
-          //Setting current effect:
-          currentEffectType = (LedStripEffectType)effectTypeId;
-
-          effectColor = ledStripColors[0]; //Taking first for now :)
-        } 
+        if (newMode == MODE_EFFECT || newMode == MODE_EFFECT_NO_COLOR_CHANGE) {        
+          ledStripEffect = (LedStripEffectType) payload[2];
+        }
       } break;
-      case CALIBRATE: {
+      case MESSAGE_CALIBRATE: {
         calibrateAcc();
       } break;   
     }      
@@ -200,12 +190,8 @@ void setup() {
 
 void setupLedStrip() {
   ledStrip.begin();
-
-  clearLedStrip(true);
-
-  for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    setLedStripLed(i, ledStrip.Color(255, 255, 255));
-  }
+  setLedStripColor(0, 0, 0);
+  ledStrip.show();
 }
 
 void setupMpu() {
@@ -245,28 +231,22 @@ void setupBle() {
   bleStartAdvertising();
 }
 
-uint32_t cnt = 0;
+void panic(const String& message) {
+  Serial.println(message);
+  while (1);
+}
 
 void loop() {
   if (!updateBle()) {
-    
+    updateFadeEffect();
   } else {
     mpu.update();
 
-    cnt++;
-
-    switch (currentMode) {
-      case EFFECT: {
-        processEffects(cnt);
-      } break;
-      case EFFECT_NO_COLOR_CHANGE: {
-        processEffects(cnt);
-      } break;
-      case GESTURE: {
-        processGesture();
-        processEffects(cnt);  
-      } break;
+    if (currentMode == MODE_GESTURE) {
+      updateGesture();
     }
+
+    updateCurrentEffect();
   }  
 }
 
@@ -283,7 +263,7 @@ bool updateBle() {
   return true;
 }
 
-void processGesture() {
+void updateGesture() {
   float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
   float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
   float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
@@ -313,11 +293,6 @@ void processGesture() {
   }
 }
 
-void panic(const String& message) {
-  Serial.println(message);
-  while (1);
-}
-
 void bleStartAdvertising() {
   bleServer->startAdvertising();
   bleIsAdvertising = true;
@@ -342,7 +317,7 @@ uint32_t to_ui32(uint8_t *pData) {
 	return ret;
 }
 
-void sendMessage(messageType type, uint8_t *dataToSend, uint8_t data_size) {
+void sendMessage(MessageType type, uint8_t *dataToSend, uint8_t data_size) {
   uint8_t checkSum = 0;
   uint8_t size = 4 + data_size;
   uint8_t message[size];
@@ -378,23 +353,23 @@ void sendStatistics() {
   dataToSend[0] = currentMode;
   dataToSend[1] = batteryPercentage;
   dataToSend[2] = (uint8_t) (ledStripPower ? '1' : '0'); 
-  dataToSend[3] = currentEffectType;
-  dataToSend[4] = currentBrightness;
+  dataToSend[3] = ledStripEffect;
+  dataToSend[4] = ledStripBrightness;
 
   //Colors todo dit ff nakijken:
   dataToSend[5] = LED_STRIP_NUM_LEDS;  //First we send length
   
-  sendMessage(STAT, dataToSend, size);
+  sendMessage(MESSAGE_STATISTICS, dataToSend, size);
 }
 
 void calibrateAcc() {
   Serial.println("Calibrating accelerometer in 2 seconds...");
 
-  setLedStripColor(ledStrip.Color(255, 0, 0));
+  setLedStripColor(255, 0, 0);
   ledStrip.show();
 
   for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    setLedStripLed(i, ledStrip.Color(0, 255, 0));
+    ledStrip.setPixelColor(i, 0, 255, 0);
     ledStrip.show();
     delay(1500 / LED_STRIP_NUM_LEDS);
   }
@@ -403,7 +378,7 @@ void calibrateAcc() {
   mpu.calibrateAccelGyro();
   mpu.verbose(false);
 
-  setLedStripColor(ledStrip.Color(0, 0, 255));
+  setLedStripColor(ledStripColor[0], ledStripColor[1], ledStripColor[2]);
   ledStrip.show();
 
   Serial.println("Accelerometer is calibrated");
@@ -414,101 +389,51 @@ void calibrateAcc() {
 }
 
 bool canModeChangeColor(Mode mode) {
-  return mode != EFFECT_NO_COLOR_CHANGE;
+  return mode != MODE_EFFECT_NO_COLOR_CHANGE;
 }
 
-void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
-  //Extracting type:
-  int typeId = data[0];
+void processLedStripCommand(uint8_t* data, uint8_t dataLength) {
+  int type = data[0];
 
   Serial.print("Processing ledstrip of type: ");
-  Serial.println(typeId);
+  Serial.println(type);
 
-  switch (typeId) {
-    case POWER:
-      {
-        bool powerValue = data[1] == 1;
+  switch (type) {
+    case LED_STRIP_COMMAND_POWER: {
+      bool power = data[1] == 1;
+      setLedStripPower(power);
+    } break;
+    case LED_STRIP_COMMAND_BRIGHTNESS: {
+      ledStripBrightness = (uint8_t) (((float) data[1] / 100.0) * 255.0);
 
-        setLedStripPower(powerValue);
+      Serial.print("Brightness: ");
+      Serial.println(ledStripBrightness);
 
-        break;
-      }
-    case COLOR:
-      {
-        uint8_t colorData[4];
-
-        //Extract color data:
-        colorData[0] = data[1];
-        colorData[1] = data[2];
-        colorData[2] = data[3];
-        colorData[3] = data[4];    
-
-        //Translate to uint32_t color:
-        uint32_t color = to_ui32(colorData);
-
-        if(currentMode == NORMAL || currentMode == GESTURE) {
-          setLedStripColor(color);
-        }
-
-        ledStrip.show();
-
-        //Saving for effect:
-        effectColor = color;
-
-        break;
-      }       
-    case BRIG:
-      {
-        int brightness = data[1];
-
-        currentBrightness = ((float)brightness / 100) * 255;
-
-        Serial.print("Brightness: ");
-        Serial.println(currentBrightness);
-
-        ledStrip.setBrightness(currentBrightness);
-        ledStrip.show();
-
-        break;
-      }      
+      ledStrip.setBrightness(ledStripBrightness);
+      ledStrip.show();
+    } break;
+    case LED_STRIP_COMMAND_COLOR: {
+      setLedStripColor(data[2], data[3], data[4]);
+      ledStrip.show();
+    } break;         
   }
 }
 
-void setLedStripLed(int index, uint32_t color) {
-  if (index < LED_STRIP_NUM_LEDS) {
-    ledStripColors[index] = color;
-    ledStrip.setPixelColor(index, color);
+void setLedStripPower(bool power) {
+  ledStripPower = power;
+
+  if (power && ledStripEffect == LED_STRIP_EFFECT_NONE) {
+    setLedStripColor(ledStripColor[0], ledStripColor[1], ledStripColor[2]);
+  } else if (!power) {
+    setLedStripColor(0, 0, 0);
   }
+
+  ledStrip.show();
 }
 
-void setLedStripColor(uint32_t color) {
+void setLedStripColor(uint8_t r, uint8_t g, uint8_t b) {
   for(int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    setLedStripLed(i, color);
-  }
-}
-
-void clearLedStrip(bool show) {
-  for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    ledStrip.setPixelColor(i, ledStrip.Color(0, 0, 0));
-  }
-
-  if(show) {
-    ledStrip.show();
-  }
-}
-
-void setLedStripPower(bool powerState) {
-  ledStripPower = powerState;
-
-  if (powerState && currentEffectType == NONE) {
-    //Restoring original state:
-    for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-      ledStrip.setPixelColor(i, ledStripColors[i]);
-    }
-
-    ledStrip.show();
-  } else if(!powerState) {
-    clearLedStrip(true);
+    ledStrip.setPixelColor(i, r, g, b);
   }
 }
 
@@ -516,91 +441,88 @@ void setLedStripPower(bool powerState) {
 // LedStrip effects
 //**********************
 
-void processEffects(uint32_t counter) {
+void updateCurrentEffect() {
   if(!ledStripPower) {
     return;
   }
 
-  switch (currentEffectType) {
-    case RAINBOW:
-      rainbowCycle(10);
-      break;
-    case FADE:
-      fadeEffect(counter, 10000);  
-    case CIRCLE:
-      circleEffect(counter, 10000);
-  }
-}
-
-//Stolen from example :)
-uint8_t rainbowIdx = 0;
-
-void rainbowCycle(uint8_t wait) {
-  //for (j = 0; j < 256; j++) {  // 5 cycles of all colors on wheel
-
-  for (uint8_t i = 0; i < ledStrip.numPixels(); i++) {
-    setLedStripLed(i, Wheel(((i * 256 / ledStrip.numPixels()) + rainbowIdx) & 255));
-  }
-
-  ledStrip.show();
-  delay(wait);
-  
-  rainbowIdx = rainbowIdx >= 256 ? 0 : rainbowIdx+1;
-}
-
-uint32_t Wheel(byte WheelPos) {
-  WheelPos = 255 - WheelPos;
-
-  if (WheelPos < 85) {
-    return ledStrip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  }
-  if (WheelPos < 170) {
-    WheelPos -= 85;
-    return ledStrip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-  WheelPos -= 170;
-  return ledStrip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-}
-
-uint8_t fadeValue = 255;
-bool fadeUp = false;
-
-void fadeEffect(uint32_t counter, uint32_t everyXCount) {
-  if(counter % everyXCount == 0) {
-    if(fadeUp) {
-      if(fadeValue >= 255) {
-        fadeUp = false;
-      }
+  switch (ledStripEffect) {
+    case LED_STRIP_EFFECT_RAINBOW: {
+      updateRainbowEffect();
+    } break;
+    case LED_STRIP_EFFECT_TRAIL: {
       
-      fadeValue++;
-    }
-    else {
-      if(fadeValue <= 10) {
-        fadeUp = true;
-      }
+    } break;
+    case LED_STRIP_EFFECT_CIRCLE: {
+      updateCircleEffect();  
+    } break;
+    case LED_STRIP_EFFECT_COMPASS: {
 
-      fadeValue--;    
-    }
-    
-    ledStrip.setBrightness(fadeValue);
-    ledStrip.show();
+    } break;
+    case LED_STRIP_EFFECT_TEMPERATURE: {
+
+    } break;
   }
 }
 
-uint8_t circlePos = 0;
+void updateFadeEffect() {
 
-void circleEffect(uint32_t counter, uint32_t everyXCount) {
-  if(counter % everyXCount == 0) {
-    clearLedStrip(false);
-    
-    for(int i = circlePos; i < circlePos + 3; i++) {
-      ledStrip.setPixelColor(i % LED_STRIP_NUM_LEDS, effectColor);
+}
+
+void updateRainbowEffect() {
+  static uint8_t pos = 0;
+  static uint32_t last_interval_time = 0;
+
+  if (millis() >= last_interval_time + 20) {
+    /*for (uint8_t i = 0; i < LED_STRIP_NUM_LEDS; i++) {
+      uint8_t wheelPos = ((i * 256 / LED_STRIP_NUM_LEDS) + pos) & 255;
+      wheelPos = 255 - wheelPos;
+
+      if (wheelPos < 85) {
+        return ledStrip.Color(255 - wheelPos * 3, 0, wheelPos * 3);
+      }
+
+      if (wheelPos < 170) {
+        wheelPos -= 85;
+        return ledStrip.Color(0, wheelPos * 3, 255 - wheelPos * 3);
+      }
+
+      wheelPos -= 170;
+
+      return ledStrip.Color(wheelPos * 3, 255 - wheelPos * 3, 0);
+
+      setLedStripLed(i, rainbowEffectWheel(((i * 256 / LED_STRIP_NUM_LEDS) + pos) & 255));
+    }*/
+
+    ledStrip.show();
+
+    pos = pos >= 256 ? 0 : pos + 1;
+    last_interval_time = millis();
+  }
+}
+
+void updateCircleEffect() {
+  static int8_t pos = 0;
+  static uint32_t last_interval_time = 0;
+
+  if (millis() >= last_interval_time + 20) {
+    for (int8_t i = 0; i < LED_STRIP_NUM_LEDS; i++) {
+     /* int8_t distance = pos >= i ? pos - i : pos + (LED_STRIP_NUM_LEDS - i); 
+      float brightness = 1.0 - (LED_STRIP_NUM_LEDS / (float) distance);
+
+      uint8_t rgbw[4];
+      ui32_to_ui8(effectColor, rgbw);
+      rgbw[0] = (uint8_t) ((float) rgbw[0] * brightness);
+      rgbw[1] = (uint8_t) ((float) rgbw[1] * brightness);
+      rgbw[2] = (uint8_t) ((float) rgbw[2] * brightness);
+      rgbw[3] = (uint8_t) ((float) rgbw[3] * brightness);
+
+      setLedStripLed(i, to_ui32(rgbw));*/
     }
 
     ledStrip.show();
 
-    circlePos++;
-
-    //circlePos = circlePos >= LED_STRIP_NUM_LEDS ? 0 : circlePos + 1;
+    pos = pos >= LED_STRIP_NUM_LEDS ? 0 : pos + 1;
+    last_interval_time = millis();
   }
 }
