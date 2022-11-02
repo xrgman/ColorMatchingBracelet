@@ -41,9 +41,7 @@ enum Mode {
   NORMAL,
   EFFECT,
   EFFECT_NO_COLOR_CHANGE,
-  MUSIC,
-  MOTION,
-  MOTION_EFFECT
+  GESTURE
 };
 
 enum LedStripCommandType {
@@ -89,7 +87,6 @@ Mode currentMode = NORMAL;
 LedStripEffectType currentEffectType = NONE;
 
 void calibrateAcc();
-
 void processLedstripCommand(uint8_t* data, uint8_t dataLength);
 void clearLedStrip(bool show);
 void sendStatistics();
@@ -173,7 +170,7 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
 
         currentMode = newMode;
 
-        if(newMode == EFFECT || newMode == EFFECT_NO_COLOR_CHANGE || newMode == MOTION_EFFECT) {            
+        if(newMode == EFFECT || newMode == EFFECT_NO_COLOR_CHANGE) {            
           int effectTypeId = payload[2];
 
           //Setting current effect:
@@ -254,9 +251,7 @@ void loop() {
   if (!updateBle()) {
     
   } else {
-    if (mpu.update()) {
-      updateGesture();
-    }
+    mpu.update();
 
     cnt++;
 
@@ -267,15 +262,12 @@ void loop() {
       case EFFECT_NO_COLOR_CHANGE: {
         processEffects(cnt);
       } break;
-      case MOTION: {
-        processMotion();
-      } break;
-      case MOTION_EFFECT: {
-        processMotion();
+      case GESTURE: {
+        processGesture();
         processEffects(cnt);  
       } break;
     }
-  }
+  }  
 }
 
 bool updateBle() {
@@ -291,7 +283,7 @@ bool updateBle() {
   return true;
 }
 
-void updateGesture() {
+void processGesture() {
   float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
   float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
   float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
@@ -422,8 +414,7 @@ void calibrateAcc() {
 }
 
 bool canModeChangeColor(Mode mode) {
-  return mode != EFFECT_NO_COLOR_CHANGE && 
-        mode != MUSIC;
+  return mode != EFFECT_NO_COLOR_CHANGE;
 }
 
 void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
@@ -455,7 +446,7 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
         //Translate to uint32_t color:
         uint32_t color = to_ui32(colorData);
 
-        if(currentMode == NORMAL || currentMode == MOTION) {
+        if(currentMode == NORMAL || currentMode == GESTURE) {
           setLedStripColor(color);
         }
 
@@ -613,12 +604,3 @@ void circleEffect(uint32_t counter, uint32_t everyXCount) {
     //circlePos = circlePos >= LED_STRIP_NUM_LEDS ? 0 : circlePos + 1;
   }
 }
-
-//****************
-// Motion section
-//****************
-
-void processMotion() {
-  
-}
-

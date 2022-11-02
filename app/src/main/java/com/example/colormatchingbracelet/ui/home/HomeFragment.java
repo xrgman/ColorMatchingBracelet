@@ -54,8 +54,7 @@ public class HomeFragment extends Fragment {
     private Slider brightnessSlider;
     private TextView disconnectedTxt;
     private ImageView colorScanButton;
-    private ImageView reactToMusicButton;
-    private ImageView reactToMotionButton;
+    private ImageView reactToGesturesButton;
 
     //Camera fields:
     private ProcessCameraProvider cameraProvider;
@@ -105,14 +104,9 @@ public class HomeFragment extends Fragment {
             createScanColorDialog();
         });
 
-        reactToMusicButton = root.findViewById(R.id.reactToMusicButton);
-        reactToMusicButton.setOnClickListener(view -> {
-            BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.MUSIC ? BraceletMode.NORMAL : BraceletMode.MUSIC, null);
-        });
-
-        reactToMotionButton = root.findViewById(R.id.reactToMotionButton);
-        reactToMotionButton.setOnClickListener(view -> {
-            BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.MOTION ? BraceletMode.NORMAL : BraceletMode.MOTION, null);
+        reactToGesturesButton = root.findViewById(R.id.reactToMotionButton);
+        reactToGesturesButton.setOnClickListener(view -> {
+            BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.GESTURE ? BraceletMode.NORMAL : BraceletMode.GESTURE, null);
         });
 
         disconnectedTxt = root.findViewById(R.id.disconnectedTxt);
@@ -205,8 +199,7 @@ public class HomeFragment extends Fragment {
     private void setLedStripControlsEnabled(boolean enabled) {
         brightnessSlider.setEnabled(enabled);
         colorScanButton.setEnabled(enabled);
-        reactToMusicButton.setEnabled(enabled);
-        reactToMotionButton.setEnabled(enabled);
+        reactToGesturesButton.setEnabled(enabled);
 
         //Effect buttons:
         effectRainbowButton.setEnabled(enabled);
@@ -231,11 +224,8 @@ public class HomeFragment extends Fragment {
             //On mode change:
             if(previousBraceletInformation == null || previousBraceletInformation.mode != braceletInformation.mode) {
 
-                //Music button:
-                reactToMusicButton.setImageResource(braceletInformation.mode == BraceletMode.MUSIC ? R.drawable.ic_music : R.drawable.ic_music_off);
-
                 //Motion button:
-                reactToMotionButton.setImageResource(braceletInformation.mode == BraceletMode.MOTION ? R.drawable.ic_waving_hand : R.drawable.ic_waving_hand_off);
+                reactToGesturesButton.setImageResource(braceletInformation.mode == BraceletMode.GESTURE ? R.drawable.ic_waving_hand : R.drawable.ic_waving_hand_off);
             }
 
             //TODO find something for this:

@@ -4,9 +4,7 @@ public enum BraceletMode {
     NORMAL(0),
     EFFECT(1),
     EFFECT_NO_COLOR_CHANGE(2),
-    MUSIC(3),
-    MOTION(4),
-    MOTION_EFFECT(5);
+    GESTURE(3);
 
     private final int value;
 
