@@ -23,6 +23,11 @@
 #define LED_STRIP_PIN 12
 #define LED_STRIP_NUM_LEDS 10
 
+#define GESTURE_ACC_THRESHOLD 2.0
+#define GESTURE_DURATION_MS 1500
+#define GESTURE_LENGTH 50
+#define GESTURE_INTERVAL_MS (GESTURE_DURATION_MS / GESTURE_LENGTH)
+
 enum messageType {
   STAT,
   DEBUG,
@@ -67,6 +72,10 @@ uint32_t ledStripColors[LED_STRIP_NUM_LEDS];
 bool ledStripPower;
 uint8_t currentBrightness = 255;
 
+uint8_t gesture_length = 0;
+uint32_t gesture_last_interval_ms;
+float gesture[150];
+
 //Effect fields:
 uint32_t effectColor; 
 
@@ -83,8 +92,6 @@ void calibrateAcc();
 
 void processLedstripCommand(uint8_t* data, uint8_t dataLength);
 void clearLedStrip(bool show);
-void setLedStripPixel(int pixel, uint32_t color);
-void setLedStrip(uint32_t color);
 void sendStatistics();
 
 class BleServerCallbacks : public BLEServerCallbacks {
@@ -200,7 +207,7 @@ void setupLedStrip() {
   clearLedStrip(true);
 
   for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    setLedStripPixel(i, ledStrip.Color(255, 255, 255));
+    setLedStripLed(i, ledStrip.Color(255, 255, 255));
   }
 }
 
@@ -245,25 +252,29 @@ uint32_t cnt = 0;
 
 void loop() {
   if (!updateBle()) {
-    return;
-  }
+    
+  } else {
+    if (mpu.update()) {
+      updateGesture();
+    }
 
-  cnt++;
+    cnt++;
 
-  switch (currentMode) {
-    case EFFECT: {
-      processEffects(cnt);
-    } break;
-    case EFFECT_NO_COLOR_CHANGE: {
-      processEffects(cnt);
-    } break;
-    case MOTION: {
-      processMotion();
-    } break;
-    case MOTION_EFFECT: {
-      processMotion();
-      processEffects(cnt);  
-    } break;
+    switch (currentMode) {
+      case EFFECT: {
+        processEffects(cnt);
+      } break;
+      case EFFECT_NO_COLOR_CHANGE: {
+        processEffects(cnt);
+      } break;
+      case MOTION: {
+        processMotion();
+      } break;
+      case MOTION_EFFECT: {
+        processMotion();
+        processEffects(cnt);  
+      } break;
+    }
   }
 }
 
@@ -280,6 +291,36 @@ bool updateBle() {
   return true;
 }
 
+void updateGesture() {
+  float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+  float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+  float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+
+  if (gesture_length == 0 && (abs(accX) >= GESTURE_ACC_THRESHOLD || abs(accY) >= GESTURE_ACC_THRESHOLD || abs(accZ) >= GESTURE_ACC_THRESHOLD)) {
+    gesture[gesture_length * 3] = accX;
+    gesture[gesture_length * 3 + 1] = accY;
+    gesture[gesture_length * 3 + 2] = accZ;
+    gesture_length++;
+    gesture_last_interval_ms = millis();
+
+    Serial.println("Recording gesture...");
+  }
+
+  if (gesture_length > 0 && gesture_last_interval_ms + GESTURE_INTERVAL_MS <= millis()) {
+    gesture[gesture_length * 3] = accX;
+    gesture[gesture_length * 3 + 1] = accY;
+    gesture[gesture_length * 3 + 2] = accZ;
+    gesture_length++;
+    gesture_last_interval_ms = millis();
+  }
+
+  if (gesture_length == GESTURE_LENGTH) {
+    gesture_length = 0;
+
+    Serial.println("Recorded gesture");
+  }
+}
+
 void panic(const String& message) {
   Serial.println(message);
   while (1);
@@ -292,16 +333,14 @@ void bleStartAdvertising() {
   Serial.println("Waiting for BLE device connection");
 }
 
-void ui32_to_ui8(uint32_t source, uint8_t *dest) 
-{
+void ui32_to_ui8(uint32_t source, uint8_t *dest) {
 	dest[0] = (uint8_t)(source >> 24);
 	dest[1] = (uint8_t)((source >> 16) & 0xFF);
 	dest[2] = (uint8_t)((source >> 8) & 0xFF);
 	dest[3] = (uint8_t)(source & 0xFF);
 }
 
-uint32_t to_ui32(uint8_t *pData) 
-{
+uint32_t to_ui32(uint8_t *pData) {
 	uint32_t ret = 0;
 	ret |= (pData[0] << 24);
 	ret |= (pData[1] << 16);
@@ -334,18 +373,12 @@ void sendMessage(messageType type, uint8_t *dataToSend, uint8_t data_size) {
     checkSum ^= dataToSend[i];
   }
 
-  //Checksum:
   message[size - 1] = checkSum;
-
-  //Serial.println(checkSum);
 
   bleTxCharacteristic->setValue(message, size);
   bleTxCharacteristic->notify();
 }
 
-/**
-  Function used to construct statistics message and send it to device.
-**/
 void sendStatistics() {
   uint8_t size = 6;
   uint8_t dataToSend[size];
@@ -363,11 +396,23 @@ void sendStatistics() {
 }
 
 void calibrateAcc() {
-  Serial.println("Calibrating accelerometer...");
+  Serial.println("Calibrating accelerometer in 2 seconds...");
+
+  setLedStripColor(ledStrip.Color(255, 0, 0));
+  ledStrip.show();
+
+  for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
+    setLedStripLed(i, ledStrip.Color(0, 255, 0));
+    ledStrip.show();
+    delay(1500 / LED_STRIP_NUM_LEDS);
+  }
 
   mpu.verbose(true);
   mpu.calibrateAccelGyro();
   mpu.verbose(false);
+
+  setLedStripColor(ledStrip.Color(0, 0, 255));
+  ledStrip.show();
 
   Serial.println("Accelerometer is calibrated");
 
@@ -375,10 +420,6 @@ void calibrateAcc() {
   EEPROM.put(EEPROM_ADDR_ACC_BIAS_Y, mpu.getAccBiasY());
   EEPROM.put(EEPROM_ADDR_ACC_BIAS_Z, mpu.getAccBiasZ());
 }
-
-//**********************************
-// State machine helper functions
-//**********************************
 
 bool canModeChangeColor(Mode mode) {
   return mode != EFFECT_NO_COLOR_CHANGE && 
@@ -415,7 +456,7 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
         uint32_t color = to_ui32(colorData);
 
         if(currentMode == NORMAL || currentMode == MOTION) {
-          setLedStrip(color);
+          setLedStripColor(color);
         }
 
         ledStrip.show();
@@ -442,17 +483,16 @@ void processLedstripCommand(uint8_t* data, uint8_t dataLength) {
   }
 }
 
-void setLedStripPixel(int pixel, uint32_t color) {
-  if (pixel < LED_STRIP_NUM_LEDS) {
-    ledStripColors[pixel] = color;
-
-    ledStrip.setPixelColor(pixel, color);
+void setLedStripLed(int index, uint32_t color) {
+  if (index < LED_STRIP_NUM_LEDS) {
+    ledStripColors[index] = color;
+    ledStrip.setPixelColor(index, color);
   }
 }
 
-void setLedStrip(uint32_t color) {
+void setLedStripColor(uint32_t color) {
   for(int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    setLedStripPixel(i, color);
+    setLedStripLed(i, color);
   }
 }
 
@@ -508,7 +548,7 @@ void rainbowCycle(uint8_t wait) {
   //for (j = 0; j < 256; j++) {  // 5 cycles of all colors on wheel
 
   for (uint8_t i = 0; i < ledStrip.numPixels(); i++) {
-    setLedStripPixel(i, Wheel(((i * 256 / ledStrip.numPixels()) + rainbowIdx) & 255));
+    setLedStripLed(i, Wheel(((i * 256 / ledStrip.numPixels()) + rainbowIdx) & 255));
   }
 
   ledStrip.show();
