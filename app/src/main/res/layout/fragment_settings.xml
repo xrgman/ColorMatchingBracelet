@@ -67,7 +67,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="97dp"
+            android:layout_height="wrap_content"
             android:layout_margin="15sp"
             android:orientation="horizontal">
 
@@ -78,7 +78,7 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginTop="5sp"
                 android:layout_weight="1"
-                android:text="Calibrate" />
+                android:text="Recalibrate" />
         </LinearLayout>
 
         <TextView
@@ -118,10 +118,10 @@
                 android:text="Compass" />
 
             <Button
-                android:id="@+id/tempSettingBtn"
+                android:id="@+id/fadeSettingBtn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Temperature" />
+                android:text="Fade" />
         </LinearLayout>
 
     </LinearLayout>

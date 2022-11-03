@@ -65,7 +65,7 @@ public class HomeFragment extends Fragment {
     private Button effectCircleButton;
     private Button effectTrailButton;
     private Button effectCompassButton;
-    private Button effectTemperatureButton;
+    private Button effectFadeButton;
 
     private BraceletInformation previousBraceletInformation;
 
@@ -148,9 +148,9 @@ public class HomeFragment extends Fragment {
             LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.COMPASS);
         });
 
-        effectTemperatureButton = root.findViewById(R.id.effectTempBtn);
-        effectTemperatureButton.setOnClickListener(view -> {
-            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.TEMPERATURE);
+        effectFadeButton = root.findViewById(R.id.effectFadeBtn);
+        effectFadeButton.setOnClickListener(view -> {
+            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.FADE);
         });
 
         setBluetoothEnabled(bluetoothServiceLink.isConnected());
@@ -212,7 +212,7 @@ public class HomeFragment extends Fragment {
         effectTrailButton.setEnabled(enabled);
         effectCircleButton.setEnabled(enabled);
         effectCompassButton.setEnabled(enabled);
-        effectTemperatureButton.setEnabled(enabled);
+        effectFadeButton.setEnabled(enabled);
 
         //Color wheel (TODO check if this actually does something):
         colorWheel.setEnabled(enabled);

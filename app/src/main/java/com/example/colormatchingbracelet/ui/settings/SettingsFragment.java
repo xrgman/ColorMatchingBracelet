@@ -38,7 +38,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
     private Button trailEffectSettingsButton;
     private Button circleEffectSettingsButton;
     private Button compassEffectSettingsButton;
-    private Button temperatureEffectSettingsButton;
+    private Button fadeEffectSettingsButton;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -70,7 +70,7 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
         trailEffectSettingsButton = root.findViewById(R.id.trailSettingBtn);
         circleEffectSettingsButton = root.findViewById(R.id.circleSettingBtn);
         compassEffectSettingsButton = root.findViewById(R.id.compassSettingBtn);
-        temperatureEffectSettingsButton = root.findViewById(R.id.tempSettingBtn);
+        fadeEffectSettingsButton = root.findViewById(R.id.fadeSettingBtn);
 
         Handler handler = new Handler();
 

@@ -6,7 +6,7 @@ public enum LedStripEffectType {
     TRAIL(2),
     CIRCLE(3),
     COMPASS(4),
-    TEMPERATURE(5);
+    FADE(5);
 
     private final int value;
 

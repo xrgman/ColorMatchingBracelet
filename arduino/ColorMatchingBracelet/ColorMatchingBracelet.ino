@@ -61,7 +61,7 @@ enum LedStripEffectType {
   LED_STRIP_EFFECT_TRAIL,
   LED_STRIP_EFFECT_CIRCLE,
   LED_STRIP_EFFECT_COMPASS,
-  LED_STRIP_EFFECT_TEMPERATURE,
+  LED_STRIP_EFFECT_FADE,
   _NUM_LED_STRIP_EFFECTS
 };
 
@@ -646,8 +646,8 @@ void updateCurrentEffect() {
     case LED_STRIP_EFFECT_COMPASS: {
       updateCompassEffect();
     } break;
-    case LED_STRIP_EFFECT_TEMPERATURE: {
-      updateTemperatureEffect();
+    case LED_STRIP_EFFECT_FADE: {
+      updateFadeEffect();
     } break;
   }
 }
@@ -774,8 +774,4 @@ void updateCompassEffect() {
   uint8_t b = (uint8_t) (southiness * 255.0f);
   setLedStripColor(r, g, b);
   ledStrip.show();
-}
-
-void updateTemperatureEffect() {
-  Serial.println(mpu.getTemperature());
 }

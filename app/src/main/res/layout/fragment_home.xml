@@ -153,15 +153,19 @@
                     android:id="@+id/effectCompassBtn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginLeft="5sp"
+                    android:layout_marginRight="5sp"
                     android:layout_weight="1"
                     android:text="Compass" />
 
                 <Button
-                    android:id="@+id/effectTempBtn"
+                    android:id="@+id/effectFadeBtn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginLeft="5sp"
+                    android:layout_marginRight="5sp"
                     android:layout_weight="1"
-                    android:text="Temperature" />
+                    android:text="Fade" />
             </LinearLayout>
 
         </LinearLayout>
