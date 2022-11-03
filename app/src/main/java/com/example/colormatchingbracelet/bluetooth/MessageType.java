@@ -5,7 +5,9 @@ public enum MessageType {
     DEBUG(1),
     LEDSTRIP(2),
     MODE(3),
-    CALIBRATE(4);
+    CALIBRATE(4),
+    ADD_GESTURE(5),
+    REMOVE_GESTURE(6);
 
     private final int value;
 

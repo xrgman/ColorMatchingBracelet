@@ -14,7 +14,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
+import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 import com.example.colormatchingbracelet.MainActivity;
 import com.example.colormatchingbracelet.R;
 import com.example.colormatchingbracelet.bluetooth.BluetoothConnection;
@@ -31,6 +33,12 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
     private TextView connStatusBlt;
     private Button connectBltBtn;
     private Button calibrateButton;
+
+    private Button rainbowEffectSettingsButton;
+    private Button trailEffectSettingsButton;
+    private Button circleEffectSettingsButton;
+    private Button compassEffectSettingsButton;
+    private Button temperatureEffectSettingsButton;
 
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -57,6 +65,12 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
         connStatusBlt = root.findViewById(R.id.bluetoothConnStatus);
         connectBltBtn = root.findViewById(R.id.buttonConnBlt);
         calibrateButton = root.findViewById(R.id.buttonCalibrate);
+
+        rainbowEffectSettingsButton = root.findViewById(R.id.rainbowSettingBtn);
+        trailEffectSettingsButton = root.findViewById(R.id.trailSettingBtn);
+        circleEffectSettingsButton = root.findViewById(R.id.circleSettingBtn);
+        compassEffectSettingsButton = root.findViewById(R.id.compassSettingBtn);
+        temperatureEffectSettingsButton = root.findViewById(R.id.tempSettingBtn);
 
         Handler handler = new Handler();
 
@@ -140,6 +154,12 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
 
             calibrateButton.setOnClickListener(view -> {
                 bluetoothServiceLink.sendMessage(MessageType.CALIBRATE, new byte[0]);
+            });
+
+            rainbowEffectSettingsButton.setOnClickListener(view -> {
+                FragmentManager fragmentManager = getParentFragmentManager();
+                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.RAINBOW, "Rainbow");
+                fragment.show(fragmentManager, "rainbow");
             });
         }
         else{

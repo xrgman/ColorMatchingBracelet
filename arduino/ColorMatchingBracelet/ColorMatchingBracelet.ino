@@ -23,10 +23,13 @@
 #define LED_STRIP_PIN 12
 #define LED_STRIP_NUM_LEDS 10
 
-#define GESTURE_ACC_THRESHOLD 2.0
+#define GESTURE_ACC_THRESHOLD 1.5
 #define GESTURE_DURATION_MS 1500
 #define GESTURE_LENGTH 50
+#define GESTURE_SIZE (3 * GESTURE_LENGTH) 
 #define GESTURE_INTERVAL_MS (GESTURE_DURATION_MS / GESTURE_LENGTH)
+
+#define RECORDED_GESTURES_MAX 128
 
 enum MessageType {
   MESSAGE_STATISTICS,
@@ -34,6 +37,8 @@ enum MessageType {
   MESSAGE_LED_STRIP,
   MESSAGE_MODE,
   MESSAGE_CALIBRATE,
+  MESSAGE_ADD_GESTURE,
+  MESSAGE_REMOVE_GESTURE,
   _NUM_MESSAGE_TYPES
 };
 
@@ -56,12 +61,13 @@ enum LedStripEffectType {
   LED_STRIP_EFFECT_TRAIL,
   LED_STRIP_EFFECT_CIRCLE,
   LED_STRIP_EFFECT_COMPASS,
-  LED_STRIP_EFFECT_TEMPERATURE
+  LED_STRIP_EFFECT_TEMPERATURE,
+  _NUM_LED_STRIP_EFFECTS
 };
 
 BLEServer* bleServer;
 BLECharacteristic* bleTxCharacteristic;
- bool bleIsAdvertising = false;
+bool bleIsAdvertising = false;
 bool bleDeviceConnected = false;
 
 MPU9250 mpu;
@@ -72,9 +78,14 @@ uint8_t ledStripBrightness = 60;
 uint8_t ledStripColor[3] = {255, 255, 255};
 LedStripEffectType ledStripEffect = LED_STRIP_EFFECT_NONE;
 
-uint8_t gesture_length = 0;
-uint32_t gesture_last_interval_ms;
-float gesture[150];
+uint8_t gestureLength = 0;
+float gesture[GESTURE_SIZE];
+uint32_t gestureLastIntervalTime = 0; 
+
+bool shouldRecordGesture = false;
+uint8_t recordedGesturesLength = 0;
+float recordedGestures[RECORDED_GESTURES_MAX][GESTURE_SIZE];
+LedStripEffectType recordedGesturesEffects[RECORDED_GESTURES_MAX];
 
 //Battery status:
 uint8_t batteryPercentage;
@@ -82,7 +93,10 @@ uint8_t batteryPercentage;
 //Storing current mode:
 Mode currentMode = MODE_NORMAL;
 
+/* Bluetooth Callbacks */
+
 void calibrateAcc();
+void recordGesture();
 void processLedStripCommand(uint8_t* data, uint8_t dataLength);
 void sendStatistics();
 
@@ -172,9 +186,18 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
       case MESSAGE_CALIBRATE: {
         calibrateAcc();
       } break;   
+      case MESSAGE_ADD_GESTURE: {
+        shouldRecordGesture = true;
+        recordedGesturesEffects[recordedGesturesLength] = (LedStripEffectType) payload[0];
+      } break;
+      case MESSAGE_REMOVE_GESTURE: {
+
+      } break;
     }      
   }
 };
+
+/* Main */
 
 void setup() {
   Serial.begin(115200);
@@ -188,29 +211,43 @@ void setup() {
   batteryPercentage = 90;  //Dummy for now :)
 }
 
-void setupLedStrip() {
-  ledStrip.begin();
-  ledStrip.setBrightness(ledStripBrightness);
-  setLedStripColor(0, 0, 0);
-  ledStrip.show();
+void panic(const String& message) {
+  Serial.println(message);
+  while (1);
 }
 
-void setupMpu() {
-  Wire.begin();
+void loop() {
+  if (!updateBle()) {
+    updateFadeEffect();
+  } else {
+    mpu.update();
 
-  if (!mpu.setup(MPU_I2C_ADDR)) {
-    panic("Failed to initialize MPU");
+    if (shouldRecordGesture) {
+      shouldRecordGesture = false;
+      recordGesture();
+    } else {
+      if (currentMode == MODE_GESTURE) {
+        updateGesture();
+      }
+
+      updateCurrentEffect();
+    }
+  }  
+}
+
+/* Bluetooth and Messaging */
+
+bool updateBle() {
+  if (!bleDeviceConnected) {
+    if (!bleIsAdvertising) {
+      delay(500);
+      bleStartAdvertising();
+    }
+
+    return false;
   }
 
-  float accBiasX;
-  float accBiasY;
-  float accBiasZ;
-  
-  EEPROM.get(EEPROM_ADDR_ACC_BIAS_X, accBiasX);
-  EEPROM.get(EEPROM_ADDR_ACC_BIAS_Y, accBiasY);
-  EEPROM.get(EEPROM_ADDR_ACC_BIAS_Z, accBiasZ);
-
-  mpu.setAccBias(accBiasX, accBiasY, accBiasZ);
+  return true;
 }
 
 void setupBle() {
@@ -230,68 +267,6 @@ void setupBle() {
   service->start();
 
   bleStartAdvertising();
-}
-
-void panic(const String& message) {
-  Serial.println(message);
-  while (1);
-}
-
-void loop() {
-  if (!updateBle()) {
-    updateFadeEffect();
-  } else {
-    mpu.update();
-
-    if (currentMode == MODE_GESTURE) {
-      updateGesture();
-    }
-
-    updateCurrentEffect();
-  }  
-}
-
-bool updateBle() {
-  if (!bleDeviceConnected) {
-    if (!bleIsAdvertising) {
-      delay(500);
-      bleStartAdvertising();
-    }
-
-    return false;
-  }
-
-  return true;
-}
-
-void updateGesture() {
-  float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
-  float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
-  float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
-
-  if (gesture_length == 0 && (abs(accX) >= GESTURE_ACC_THRESHOLD || abs(accY) >= GESTURE_ACC_THRESHOLD || abs(accZ) >= GESTURE_ACC_THRESHOLD)) {
-    gesture[gesture_length * 3] = accX;
-    gesture[gesture_length * 3 + 1] = accY;
-    gesture[gesture_length * 3 + 2] = accZ;
-    gesture_length++;
-    gesture_last_interval_ms = millis();
-
-    Serial.println("Recording gesture...");
-  }
-
-  if (gesture_length > 0 && gesture_last_interval_ms + GESTURE_INTERVAL_MS <= millis()) {
-    gesture[gesture_length * 3] = accX;
-    gesture[gesture_length * 3 + 1] = accY;
-    gesture[gesture_length * 3 + 2] = accZ;
-    gesture_length++;
-    gesture_last_interval_ms = millis();
-  }
-
-  if (gesture_length == GESTURE_LENGTH) {
-    gesture_length = 0;
-
-    Serial.println("Recorded gesture");
-  }
 }
 
 void bleStartAdvertising() {
@@ -363,17 +338,10 @@ void sendStatistics() {
   sendMessage(MESSAGE_STATISTICS, dataToSend, size);
 }
 
+/* MPU */
+
 void calibrateAcc() {
-  Serial.println("Calibrating accelerometer in 2 seconds...");
-
-  setLedStripColor(255, 0, 0);
-  ledStrip.show();
-
-  for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    ledStrip.setPixelColor(i, 0, 255, 0);
-    ledStrip.show();
-    delay(1500 / LED_STRIP_NUM_LEDS);
-  }
+  ledStripCountDown("Calibrating accelerometer");
 
   mpu.verbose(true);
   mpu.calibrateAccelGyro();
@@ -388,6 +356,196 @@ void calibrateAcc() {
   EEPROM.put(EEPROM_ADDR_ACC_BIAS_Y, mpu.getAccBiasY());
   EEPROM.put(EEPROM_ADDR_ACC_BIAS_Z, mpu.getAccBiasZ());
 }
+
+void setupMpu() {
+  Wire.begin();
+
+  MPU9250Setting setting;
+  setting.accel_fs_sel = ACCEL_FS_SEL::A2G;
+
+  if (!mpu.setup(MPU_I2C_ADDR, setting)) {
+    panic("Failed to initialize MPU");
+  }
+
+  float accBiasX;
+  float accBiasY;
+  float accBiasZ;
+  
+  EEPROM.get(EEPROM_ADDR_ACC_BIAS_X, accBiasX);
+  EEPROM.get(EEPROM_ADDR_ACC_BIAS_Y, accBiasY);
+  EEPROM.get(EEPROM_ADDR_ACC_BIAS_Z, accBiasZ);
+
+  mpu.setAccBias(accBiasX, accBiasY, accBiasZ);
+}
+
+/* Gesture Recognition */
+
+void updateGesture() {
+  float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+  float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+  float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+
+  if (gestureLength == 0 && (abs(accX) >= GESTURE_ACC_THRESHOLD || abs(accY) >= GESTURE_ACC_THRESHOLD || abs(accZ) >= GESTURE_ACC_THRESHOLD)) {
+    gesture[0] = accX;
+    gesture[1] = accY;
+    gesture[2] = accZ;
+    gestureLength++;
+    gestureLastIntervalTime = millis();
+
+    Serial.println("Recording gesture...");
+  }
+
+  if (gestureLength > 0 && gestureLastIntervalTime + GESTURE_INTERVAL_MS <= millis()) {
+    gesture[gestureLength * 3] = accX;
+    gesture[gestureLength * 3 + 1] = accY;
+    gesture[gestureLength * 3 + 2] = accZ;
+    gestureLength++;
+    gestureLastIntervalTime = millis();
+  }
+
+  if (gestureLength == GESTURE_LENGTH) {
+    gestureLength = 0;
+
+    classifyGesture();
+  }
+}
+
+void classifyGesture() {
+  Serial.println("Classifying gesture...");
+
+  float smallestMean = 0.35;
+  LedStripEffectType effect;
+
+  for (int i = 0; i < recordedGesturesLength; i++) {
+    float mean = dynamicTimeWarping(gesture, recordedGestures[i]);
+
+    Serial.print("Mean: ");
+    Serial.println(mean);
+
+    if (mean < smallestMean) {
+      smallestMean = mean;
+      effect = recordedGesturesEffects[i];
+    }
+  }
+
+  if (smallestMean < 0.35) {
+    ledStripEffect = effect;
+  }
+}
+
+float dynamicTimeWarping(float* x, float* y) { 
+  static float dtw[GESTURE_LENGTH][GESTURE_LENGTH];
+
+  dtw[0][0] = distance(x, y, 0, 0);
+
+  for (int i = 1; i < GESTURE_LENGTH; i++) {
+    dtw[i][0] = distance(x, y, i, 0) + dtw[i - 1][0];
+    dtw[0][i] = distance(x, y, 0, i) + dtw[0][i - 1];
+  }
+
+  for (int i = 1; i < GESTURE_LENGTH; i++) {
+    for (int j = 1; j < GESTURE_LENGTH; j++) {
+      dtw[i][j] = distance(x, y, i, j) + min(dtw[i - 1][j], min(dtw[i][j - 1], dtw[i - 1][j - 1]));
+    }
+  }
+
+  int i = GESTURE_LENGTH - 1;
+  int j = GESTURE_LENGTH - 1;
+  float distance[GESTURE_LENGTH * 2];
+  int length = 0;
+
+  while (i > 0 && j > 0) {
+    if (dtw[i - 1][j] <= dtw[i][j - 1] && dtw[i - 1][j] <= dtw[i - 1][j - 1]) {
+      distance[length++] = dtw[i][j] - dtw[--i][j];
+    } else if (dtw[i][j - 1] < dtw[i - 1][j - 1]) {
+      distance[length++] = dtw[i][j] - dtw[i][--j];
+    } else {
+      distance[length++] = dtw[i][j] - dtw[--i][--j];
+    }
+  }
+
+  while (i > 0) {
+    distance[length++] = dtw[i][0] - dtw[--i][0];
+  }
+
+  while (j > 0) {
+    distance[length++] = dtw[0][j] - dtw[0][--j];
+  }
+
+  distance[length++] = dtw[0][0];
+
+  float mean = 0;
+
+  for (int i = 0; i < length; i++) {
+    mean += distance[i];
+  }
+
+  mean = mean / (float) length;
+
+  return mean;
+}
+
+float distance(float* x, float* y, int i, int j) {
+  float axi = x[i];
+  float ayi = x[i + 1];
+  float azi = x[i + 2];
+  float axj = y[j];
+  float ayj = y[j + 1];
+  float azj = y[j + 2];
+  float dir = (axi * axj + ayi * ayj + azi * azj) / (normalize(axi, ayi, azi) * normalize(axj, ayj, azj) + 0.0000001);
+
+  return (1.0 - 0.5 * dir) * normalize(axi - axj, ayi - ayj, azi - azj);
+}
+
+float normalize(float x, float y, float z) {
+  return sqrt(x * x + y * y + z * z);
+}
+
+void recordGesture() {
+  ledStripCountDown("Recording new gesture");
+
+  while (1) {
+    if (mpu.update()) {
+      float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+      float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+      float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+
+      if (abs(accX) >= GESTURE_ACC_THRESHOLD || abs(accY) >= GESTURE_ACC_THRESHOLD || abs(accZ) >= GESTURE_ACC_THRESHOLD) {
+        recordedGestures[recordedGesturesLength][0] = accX;
+        recordedGestures[recordedGesturesLength][1] = accY;
+        recordedGestures[recordedGesturesLength][2] = accZ;
+
+        gestureLastIntervalTime = millis();
+
+        break;
+      }
+    }
+  }
+
+  for (int i = 1; i < GESTURE_LENGTH; i++) {
+    while (gestureLastIntervalTime + GESTURE_INTERVAL_MS > millis());
+
+    mpu.update();
+
+    float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+    float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+    float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+
+    recordedGestures[recordedGesturesLength][i * 3] = accX;
+    recordedGestures[recordedGesturesLength][i * 3 + 1] = accY;
+    recordedGestures[recordedGesturesLength][i * 3 + 2] = accZ;
+
+    gestureLastIntervalTime = millis();
+  }
+
+  Serial.println("Recorded gesture");
+
+  recordedGesturesLength++;
+}
+
+/* Led Strip Control */
+
+void setupLedStrip() {}
 
 bool canModeChangeColor(Mode mode) {
   return mode != MODE_EFFECT_NO_COLOR_CHANGE;
@@ -436,9 +594,20 @@ void setLedStripColor(uint8_t r, uint8_t g, uint8_t b) {
   }
 }
 
-//**********************
-// LedStrip effects
-//**********************
+/* Led Strip Effects */
+
+void ledStripCountDown(const String& action) {
+  Serial.println(action + "in 1.5 seconds...");
+
+  setLedStripColor(255, 0, 0);
+  ledStrip.show();
+
+  for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
+    ledStrip.setPixelColor(i, 0, 255, 0);
+    ledStrip.show();
+    delay(1500 / LED_STRIP_NUM_LEDS);
+  }
+}
 
 void updateCurrentEffect() {
   if (!ledStripPower) {

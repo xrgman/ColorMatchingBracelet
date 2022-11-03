@@ -22,9 +22,9 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:layout_margin="15sp">
+            android:layout_height="96dp"
+            android:layout_margin="15sp"
+            android:orientation="vertical">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -36,30 +36,92 @@
                     android:layout_height="wrap_content"
                     android:text="Status: "
                     android:textSize="20sp"
-                    android:textStyle="bold"/>
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/bluetoothConnStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
-                    android:text="Disconnected"/>
+                    android:text="Disconnected"
+                    android:textSize="20sp" />
 
             </LinearLayout>
 
             <Button
                 android:id="@+id/buttonConnBlt"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Connect"
-                android:layout_marginTop="5sp"/>
+                android:layout_height="match_parent"
+                android:layout_gravity="center_vertical"
+                android:layout_marginTop="5sp"
+                android:layout_weight="1"
+                android:text="Connect" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sensor settings"
+            android:textSize="25sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="97dp"
+            android:layout_margin="15sp"
+            android:orientation="horizontal">
 
             <Button
                 android:id="@+id/buttonCalibrate"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_vertical"
+                android:layout_marginTop="5sp"
+                android:layout_weight="1"
                 android:text="Calibrate" />
+        </LinearLayout>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Effect settings"
+            android:textSize="25sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/rainbowSettingBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Rainbow" />
+
+            <Button
+                android:id="@+id/trailSettingBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Trail" />
+
+            <Button
+                android:id="@+id/circleSettingBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Circle" />
+
+            <Button
+                android:id="@+id/compassSettingBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Compass" />
+
+            <Button
+                android:id="@+id/tempSettingBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Temperature" />
         </LinearLayout>
 
     </LinearLayout>
