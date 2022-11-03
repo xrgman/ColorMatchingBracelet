@@ -82,7 +82,6 @@ uint8_t gestureLength = 0;
 float gesture[GESTURE_SIZE];
 uint32_t gestureLastIntervalTime = 0; 
 
-bool shouldRecordGesture = false;
 uint8_t recordedGesturesLength = 0;
 float recordedGestures[RECORDED_GESTURES_MAX][GESTURE_SIZE];
 LedStripEffectType recordedGesturesEffects[RECORDED_GESTURES_MAX];
@@ -92,6 +91,9 @@ uint8_t batteryPercentage;
 
 //Storing current mode:
 Mode currentMode = MODE_NORMAL;
+
+bool shouldRecordGesture = false;
+bool shouldCalibrate = false;
 
 /* Bluetooth Callbacks */
 
@@ -184,7 +186,7 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
         }
       } break;
       case MESSAGE_CALIBRATE: {
-        calibrateAcc();
+        shouldCalibrate = true;
       } break;   
       case MESSAGE_ADD_GESTURE: {
         shouldRecordGesture = true;
@@ -202,7 +204,6 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
 
-  setupLedStrip();
   setupMpu();
   setupBle();
 
@@ -218,11 +219,15 @@ void panic(const String& message) {
 
 void loop() {
   if (!updateBle()) {
-    updateFadeEffect();
+    setLedStripColor(0, 0, 0);
+    ledStrip.show();
   } else {
     mpu.update();
 
-    if (shouldRecordGesture) {
+    if (shouldCalibrate) {
+      shouldCalibrate = false;
+      calibrateAcc();
+    } else if (shouldRecordGesture) {
       shouldRecordGesture = false;
       recordGesture();
     } else {
@@ -343,18 +348,23 @@ void sendStatistics() {
 void calibrateAcc() {
   ledStripCountDown("Calibrating accelerometer");
 
+  setLedStripColor(0, 255, 0);
+  ledStrip.show();
+
   mpu.verbose(true);
   mpu.calibrateAccelGyro();
   mpu.verbose(false);
-
-  setLedStripColor(ledStripColor[0], ledStripColor[1], ledStripColor[2]);
-  ledStrip.show();
 
   Serial.println("Accelerometer is calibrated");
 
   EEPROM.put(EEPROM_ADDR_ACC_BIAS_X, mpu.getAccBiasX());
   EEPROM.put(EEPROM_ADDR_ACC_BIAS_Y, mpu.getAccBiasY());
   EEPROM.put(EEPROM_ADDR_ACC_BIAS_Z, mpu.getAccBiasZ());
+
+  setLedStripColor(0, 0, 0);
+  ledStrip.show();
+
+  delay(500);
 }
 
 void setupMpu() {
@@ -511,6 +521,9 @@ void recordGesture() {
       float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
 
       if (abs(accX) >= GESTURE_ACC_THRESHOLD || abs(accY) >= GESTURE_ACC_THRESHOLD || abs(accZ) >= GESTURE_ACC_THRESHOLD) {
+        setLedStripColor(0, 255, 0);
+        ledStrip.show();
+
         recordedGestures[recordedGesturesLength][0] = accX;
         recordedGestures[recordedGesturesLength][1] = accY;
         recordedGestures[recordedGesturesLength][2] = accZ;
@@ -541,11 +554,13 @@ void recordGesture() {
   Serial.println("Recorded gesture");
 
   recordedGesturesLength++;
+
+  setLedStripColor(0, 0, 0);
+  ledStrip.show();
+  delay(500);
 }
 
 /* Led Strip Control */
-
-void setupLedStrip() {}
 
 bool canModeChangeColor(Mode mode) {
   return mode != MODE_EFFECT_NO_COLOR_CHANGE;
@@ -599,11 +614,11 @@ void setLedStripColor(uint8_t r, uint8_t g, uint8_t b) {
 void ledStripCountDown(const String& action) {
   Serial.println(action + "in 1.5 seconds...");
 
-  setLedStripColor(255, 0, 0);
+  setLedStripColor(0, 0, 0);
   ledStrip.show();
 
   for (int i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-    ledStrip.setPixelColor(i, 0, 255, 0);
+    ledStrip.setPixelColor(i, 255, 0, 0);
     ledStrip.show();
     delay(1500 / LED_STRIP_NUM_LEDS);
   }
