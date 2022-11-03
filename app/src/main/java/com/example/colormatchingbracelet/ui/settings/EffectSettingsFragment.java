@@ -21,7 +21,9 @@ import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.example.colormatchingbracelet.bluetooth.MessageType;
 import com.example.colormatchingbracelet.databinding.FragmentEffectSettingsBinding;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -122,7 +124,7 @@ public class EffectSettingsFragment extends DialogFragment {
             data[0] = (byte) effectType.getValue();
 
             bluetoothService.sendMessage(MessageType.ADD_GESTURE, data);
-            gestureList.add("kaas");
+            gestureList.add(new SimpleDateFormat("yy-MM-dd HH:mm:ss").format(new Date()));
             adapter.notifyDataSetChanged();
         });
 

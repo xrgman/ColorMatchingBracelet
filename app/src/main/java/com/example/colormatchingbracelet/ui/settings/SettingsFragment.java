@@ -161,6 +161,30 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
                 EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.RAINBOW, "Rainbow");
                 fragment.show(fragmentManager, "rainbow");
             });
+
+            trailEffectSettingsButton.setOnClickListener(view -> {
+                FragmentManager fragmentManager = getParentFragmentManager();
+                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.TRAIL, "Trail");
+                fragment.show(fragmentManager, "trail");
+            });
+
+            circleEffectSettingsButton.setOnClickListener(view -> {
+                FragmentManager fragmentManager = getParentFragmentManager();
+                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.CIRCLE, "Circle");
+                fragment.show(fragmentManager, "circle");
+            });
+
+            compassEffectSettingsButton.setOnClickListener(view -> {
+                FragmentManager fragmentManager = getParentFragmentManager();
+                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.COMPASS, "Compass");
+                fragment.show(fragmentManager, "compass");
+            });
+
+            fadeEffectSettingsButton.setOnClickListener(view -> {
+                FragmentManager fragmentManager = getParentFragmentManager();
+                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.FADE, "Fade");
+                fragment.show(fragmentManager, "fade");
+            });
         }
         else{
             //test.setEnabled(false);
