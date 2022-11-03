@@ -130,37 +130,27 @@ public class HomeFragment extends Fragment {
 
         effectRainbowButton = root.findViewById(R.id.effectRainbowBtn);
         effectRainbowButton.setOnClickListener(view -> {
-            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.RAINBOW : LedStripEffectType.NONE;
-
-            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.RAINBOW);
         });
 
         effectTrailButton = root.findViewById(R.id.effectTrailBtn);
         effectTrailButton.setOnClickListener(view -> {
-            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.TRAIL : LedStripEffectType.NONE;
-
-            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.TRAIL);
         });
 
         effectCircleButton = root.findViewById(R.id.effectCircleBtn);
         effectCircleButton.setOnClickListener(view -> {
-            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.CIRCLE : LedStripEffectType.NONE;
-
-            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.CIRCLE);
         });
 
         effectCompassButton = root.findViewById(R.id.effectCompassBtn);
         effectCompassButton.setOnClickListener(view -> {
-            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.COMPASS : LedStripEffectType.NONE;
-
-            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.COMPASS);
         });
 
         effectTemperatureButton = root.findViewById(R.id.effectTempBtn);
         effectTemperatureButton.setOnClickListener(view -> {
-            LedStripEffectType type = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.NONE ? LedStripEffectType.TEMPERATURE : LedStripEffectType.NONE;
-
-            LedStripCommand.sendEffect(bluetoothServiceLink, type);
+            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.TEMPERATURE);
         });
 
         setBluetoothEnabled(bluetoothServiceLink.isConnected());

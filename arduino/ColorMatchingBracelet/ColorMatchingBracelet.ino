@@ -61,15 +61,15 @@ enum LedStripEffectType {
 
 BLEServer* bleServer;
 BLECharacteristic* bleTxCharacteristic;
-bool bleIsAdvertising = false;
+ bool bleIsAdvertising = false;
 bool bleDeviceConnected = false;
 
 MPU9250 mpu;
 
 Adafruit_NeoPixel ledStrip(LED_STRIP_NUM_LEDS, LED_STRIP_PIN, NEO_GRB + NEO_KHZ800);
 bool ledStripPower;
-uint8_t ledStripBrightness;
-uint8_t ledStripColor[3];
+uint8_t ledStripBrightness = 60;
+uint8_t ledStripColor[3] = {255, 255, 255};
 LedStripEffectType ledStripEffect = LED_STRIP_EFFECT_NONE;
 
 uint8_t gesture_length = 0;
@@ -190,6 +190,7 @@ void setup() {
 
 void setupLedStrip() {
   ledStrip.begin();
+  ledStrip.setBrightness(ledStripBrightness);
   setLedStripColor(0, 0, 0);
   ledStrip.show();
 }
@@ -410,11 +411,9 @@ void processLedStripCommand(uint8_t* data, uint8_t dataLength) {
       Serial.println(ledStripBrightness);
 
       ledStrip.setBrightness(ledStripBrightness);
-      ledStrip.show();
     } break;
     case LED_STRIP_COMMAND_COLOR: {
-      setLedStripColor(data[2], data[3], data[4]);
-      ledStrip.show();
+      memcpy(ledStripColor, &data[2], 3);
     } break;         
   }
 }
@@ -442,31 +441,50 @@ void setLedStripColor(uint8_t r, uint8_t g, uint8_t b) {
 //**********************
 
 void updateCurrentEffect() {
-  if(!ledStripPower) {
+  if (!ledStripPower) {
     return;
   }
 
   switch (ledStripEffect) {
+    case LED_STRIP_EFFECT_NONE: {
+      setLedStripColor(ledStripColor[0], ledStripColor[1], ledStripColor[2]);
+      ledStrip.show();
+    } break;
     case LED_STRIP_EFFECT_RAINBOW: {
       updateRainbowEffect();
     } break;
     case LED_STRIP_EFFECT_TRAIL: {
-      
+      updateTrailEffect();
     } break;
     case LED_STRIP_EFFECT_CIRCLE: {
       updateCircleEffect();  
     } break;
     case LED_STRIP_EFFECT_COMPASS: {
-
+      updateCompassEffect();
     } break;
     case LED_STRIP_EFFECT_TEMPERATURE: {
-
+      updateTemperatureEffect();
     } break;
   }
 }
 
 void updateFadeEffect() {
+  static int16_t index = 0;
+  static uint32_t last_interval_time = 0;
 
+  if (millis() >= last_interval_time + 20) {
+    float brightness = 1.0 - ((float) abs(128 - index) / 128.0);
+    brightness = brightness * brightness * brightness;
+    uint8_t r = (uint8_t) ((float) ledStripColor[0] * brightness);
+    uint8_t g = (uint8_t) ((float) ledStripColor[1] * brightness);
+    uint8_t b = (uint8_t) ((float) ledStripColor[2] * brightness);
+
+    setLedStripColor(r, g, b);
+    ledStrip.show();
+
+    index = (index + 1) % 256;
+    last_interval_time = millis();
+  }
 }
 
 void updateRainbowEffect() {
@@ -474,25 +492,20 @@ void updateRainbowEffect() {
   static uint32_t last_interval_time = 0;
 
   if (millis() >= last_interval_time + 20) {
-    /*for (uint8_t i = 0; i < LED_STRIP_NUM_LEDS; i++) {
+    for (uint8_t i = 0; i < LED_STRIP_NUM_LEDS; i++) {
       uint8_t wheelPos = ((i * 256 / LED_STRIP_NUM_LEDS) + pos) & 255;
       wheelPos = 255 - wheelPos;
 
       if (wheelPos < 85) {
-        return ledStrip.Color(255 - wheelPos * 3, 0, wheelPos * 3);
-      }
-
-      if (wheelPos < 170) {
+        ledStrip.setPixelColor(i, 255 - wheelPos * 3, 0, wheelPos * 3);
+      } else if (wheelPos < 170) {
         wheelPos -= 85;
-        return ledStrip.Color(0, wheelPos * 3, 255 - wheelPos * 3);
+        ledStrip.setPixelColor(i, 0, wheelPos * 3, 255 - wheelPos * 3);
+      } else {
+        wheelPos -= 170;
+        ledStrip.setPixelColor(i, wheelPos * 3, 255 - wheelPos * 3, 0);
       }
-
-      wheelPos -= 170;
-
-      return ledStrip.Color(wheelPos * 3, 255 - wheelPos * 3, 0);
-
-      setLedStripLed(i, rainbowEffectWheel(((i * 256 / LED_STRIP_NUM_LEDS) + pos) & 255));
-    }*/
+    }
 
     ledStrip.show();
 
@@ -501,23 +514,62 @@ void updateRainbowEffect() {
   }
 }
 
+void updateTrailEffect() {
+  static uint32_t last_interval_time = 0;
+  static float brightness = 0.0f;
+
+  float accX = mpu.getAccX() - mpu.getAccBiasX() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+  float accY = mpu.getAccY() - mpu.getAccBiasY() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+  float accZ = mpu.getAccZ() - mpu.getAccBiasZ() / (float) MPU9250::CALIB_ACCEL_SENSITIVITY;
+
+  if (abs(accX) > 1.5 || abs(accY) > 1.5 || abs(accZ) > 1.5) {
+    brightness = sqrt(abs(accX) + abs(accY) + abs(accZ));
+  }
+
+  if (millis() >= last_interval_time + 20) {
+    if (brightness > 0.0f) {
+      float clampedBrightness = brightness;
+
+      if (clampedBrightness > 1.0f) {
+        clampedBrightness = 1.0f;
+      }
+
+      uint8_t r = (uint8_t) ((float) ledStripColor[0] * clampedBrightness);
+      uint8_t g = (uint8_t) ((float) ledStripColor[1] * clampedBrightness);
+      uint8_t b = (uint8_t) ((float) ledStripColor[2] * clampedBrightness);
+
+      setLedStripColor(r, g, b);
+
+      brightness -= 0.05f;
+
+      if (brightness < 0.0f) {
+        brightness = 0.0f;
+      }
+
+      last_interval_time = millis();
+    } else {
+      setLedStripColor(0, 0, 0);
+    }
+
+    ledStrip.show();
+  }
+}
+
 void updateCircleEffect() {
   static int8_t pos = 0;
   static uint32_t last_interval_time = 0;
 
-  if (millis() >= last_interval_time + 20) {
+  if (millis() >= last_interval_time + 100) {
     for (int8_t i = 0; i < LED_STRIP_NUM_LEDS; i++) {
-     /* int8_t distance = pos >= i ? pos - i : pos + (LED_STRIP_NUM_LEDS - i); 
-      float brightness = 1.0 - (LED_STRIP_NUM_LEDS / (float) distance);
+      int8_t distance = pos >= i ? pos - i : pos + (LED_STRIP_NUM_LEDS - i); 
+      float brightness = 1.0 - ((float) distance / (float) LED_STRIP_NUM_LEDS);
+      brightness = brightness * brightness * brightness;
 
-      uint8_t rgbw[4];
-      ui32_to_ui8(effectColor, rgbw);
-      rgbw[0] = (uint8_t) ((float) rgbw[0] * brightness);
-      rgbw[1] = (uint8_t) ((float) rgbw[1] * brightness);
-      rgbw[2] = (uint8_t) ((float) rgbw[2] * brightness);
-      rgbw[3] = (uint8_t) ((float) rgbw[3] * brightness);
+      uint8_t r = (uint8_t) ((float) ledStripColor[0] * brightness);
+      uint8_t g = (uint8_t) ((float) ledStripColor[1] * brightness);
+      uint8_t b = (uint8_t) ((float) ledStripColor[2] * brightness);
 
-      setLedStripLed(i, to_ui32(rgbw));*/
+      ledStrip.setPixelColor(i, r, g, b);
     }
 
     ledStrip.show();
@@ -525,4 +577,21 @@ void updateCircleEffect() {
     pos = pos >= LED_STRIP_NUM_LEDS ? 0 : pos + 1;
     last_interval_time = millis();
   }
+}
+
+void updateCompassEffect() {
+  float magX = mpu.getMagX();
+  float magY = mpu.getMagY();
+  float angle = atan2(magX, magY);
+  float southiness = abs(angle) / 3.15f;
+
+  uint8_t r = 255;
+  uint8_t g = (uint8_t) (southiness * 255.0f);
+  uint8_t b = (uint8_t) (southiness * 255.0f);
+  setLedStripColor(r, g, b);
+  ledStrip.show();
+}
+
+void updateTemperatureEffect() {
+  Serial.println(mpu.getTemperature());
 }
