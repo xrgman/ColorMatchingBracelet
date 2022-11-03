@@ -2,6 +2,8 @@ package com.example.colormatchingbracelet.ui.home;
 
 import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 
+import static com.example.colormatchingbracelet.LedStrip.LedStripEffectType.RAINBOW;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -129,28 +131,68 @@ public class HomeFragment extends Fragment {
         });
 
         effectRainbowButton = root.findViewById(R.id.effectRainbowBtn);
-        effectRainbowButton.setOnClickListener(view -> {
-            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.RAINBOW);
+        effectRainbowButton.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) return true;
+            if (event.getAction() != MotionEvent.ACTION_UP) return false;
+
+            LedStripEffectType effect = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.RAINBOW ? LedStripEffectType.NONE : LedStripEffectType.RAINBOW;
+            LedStripCommand.sendEffect(bluetoothServiceLink, effect);
+
+            updateButtons();
+
+            return true;
         });
 
         effectTrailButton = root.findViewById(R.id.effectTrailBtn);
-        effectTrailButton.setOnClickListener(view -> {
-            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.TRAIL);
+        effectTrailButton.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) return true;
+            if (event.getAction() != MotionEvent.ACTION_UP) return false;
+
+            LedStripEffectType effect = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.TRAIL ? LedStripEffectType.NONE : LedStripEffectType.TRAIL;
+            LedStripCommand.sendEffect(bluetoothServiceLink, effect);
+
+            updateButtons();
+
+            return true;
         });
 
         effectCircleButton = root.findViewById(R.id.effectCircleBtn);
-        effectCircleButton.setOnClickListener(view -> {
-            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.CIRCLE);
+        effectCircleButton.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) return true;
+            if (event.getAction() != MotionEvent.ACTION_UP) return false;
+
+            LedStripEffectType effect = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.CIRCLE ? LedStripEffectType.NONE : LedStripEffectType.CIRCLE;
+            LedStripCommand.sendEffect(bluetoothServiceLink, effect);
+
+            updateButtons();
+
+            return true;
         });
 
         effectCompassButton = root.findViewById(R.id.effectCompassBtn);
-        effectCompassButton.setOnClickListener(view -> {
-            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.COMPASS);
+        effectCompassButton.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) return true;
+            if (event.getAction() != MotionEvent.ACTION_UP) return false;
+
+            LedStripEffectType effect = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.COMPASS ? LedStripEffectType.NONE : LedStripEffectType.COMPASS;
+            LedStripCommand.sendEffect(bluetoothServiceLink, effect);
+
+            updateButtons();
+
+            return true;
         });
 
         effectFadeButton = root.findViewById(R.id.effectFadeBtn);
-        effectFadeButton.setOnClickListener(view -> {
-            LedStripCommand.sendEffect(bluetoothServiceLink, LedStripEffectType.FADE);
+        effectFadeButton.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) return true;
+            if (event.getAction() != MotionEvent.ACTION_UP) return false;
+
+            LedStripEffectType effect = bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent == LedStripEffectType.FADE ? LedStripEffectType.NONE : LedStripEffectType.FADE;
+            LedStripCommand.sendEffect(bluetoothServiceLink, effect);
+
+            updateButtons();
+
+            return true;
         });
 
         setBluetoothEnabled(bluetoothServiceLink.isConnected());
@@ -236,14 +278,36 @@ public class HomeFragment extends Fragment {
                 reactToGesturesButton.setImageResource(braceletInformation.mode == BraceletMode.GESTURE ? R.drawable.ic_waving_hand : R.drawable.ic_waving_hand_off);
             }
 
-            //TODO find something for this:
-            //brightnessSlider.setValue(5*(Math.round(((braceletInformation.ledStripBrightness*100)/255)/5)));
-
-            //Disabling colorwheel for all colors that do not support color changing:
-            colorWheel.setEnabled(braceletInformation.mode.canChangeColor());
+            updateButtons();
         }
 
         previousBraceletInformation = new BraceletInformation(braceletInformation);
+    }
+
+    private void updateButtons() {
+        effectRainbowButton.setPressed(false);
+        effectTrailButton.setPressed(false);
+        effectCircleButton.setPressed(false);
+        effectCompassButton.setPressed(false);
+        effectFadeButton.setPressed(false);
+
+        switch (bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent) {
+            case RAINBOW:
+                effectRainbowButton.setPressed(true);
+                break;
+            case TRAIL:
+                effectTrailButton.setPressed(true);
+                break;
+            case CIRCLE:
+                effectCircleButton.setPressed(true);
+                break;
+            case COMPASS:
+                effectCompassButton.setPressed(true);
+                break;
+            case FADE:
+                effectFadeButton.setPressed(true);
+                break;
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")

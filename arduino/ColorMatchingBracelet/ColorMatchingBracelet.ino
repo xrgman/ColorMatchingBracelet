@@ -45,7 +45,6 @@ enum MessageType {
 enum Mode {
   MODE_NORMAL,
   MODE_EFFECT,
-  MODE_EFFECT_NO_COLOR_CHANGE,
   MODE_GESTURE
 };
 
@@ -181,8 +180,10 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
 
         currentMode = newMode;
 
-        if (newMode == MODE_EFFECT || newMode == MODE_EFFECT_NO_COLOR_CHANGE) {        
+        if (newMode == MODE_EFFECT) {        
           ledStripEffect = (LedStripEffectType) payload[2];
+        } else if (newMode == MODE_NORMAL) {
+          ledStripEffect = LED_STRIP_EFFECT_NONE;
         }
       } break;
       case MESSAGE_CALIBRATE: {
@@ -561,10 +562,6 @@ void recordGesture() {
 }
 
 /* Led Strip Control */
-
-bool canModeChangeColor(Mode mode) {
-  return mode != MODE_EFFECT_NO_COLOR_CHANGE;
-}
 
 void processLedStripCommand(uint8_t* data, uint8_t dataLength) {
   int type = data[0];
