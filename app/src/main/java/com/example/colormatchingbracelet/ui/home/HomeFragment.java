@@ -110,7 +110,16 @@ public class HomeFragment extends Fragment {
 
         reactToGesturesButton = root.findViewById(R.id.reactToMotionButton);
         reactToGesturesButton.setOnClickListener(view -> {
-            BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.GESTURE ? BraceletMode.NORMAL : BraceletMode.GESTURE, null);
+            BraceletMode mode = bluetoothServiceLink.getBraceletInformation().mode;
+
+            if (mode == BraceletMode.EFFECT || mode == BraceletMode.GESTURE_EFFECT) {
+                byte[] data = new byte[1];
+                data[0] = (byte) bluetoothServiceLink.getBraceletInformation().ledStripEffectCurrent.getValue();
+
+                BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.GESTURE_EFFECT ? BraceletMode.EFFECT : BraceletMode.GESTURE_EFFECT, data);
+            } else {
+                BraceletCommand.sendModeChange(bluetoothServiceLink, bluetoothServiceLink.getBraceletInformation().mode == BraceletMode.GESTURE ? BraceletMode.NORMAL : BraceletMode.GESTURE, null);
+            }
         });
 
         disconnectedTxt = root.findViewById(R.id.disconnectedTxt);
@@ -275,10 +284,10 @@ public class HomeFragment extends Fragment {
             if(previousBraceletInformation == null || previousBraceletInformation.mode != braceletInformation.mode) {
 
                 //Motion button:
-                reactToGesturesButton.setImageResource(braceletInformation.mode == BraceletMode.GESTURE ? R.drawable.ic_waving_hand : R.drawable.ic_waving_hand_off);
+                reactToGesturesButton.setImageResource(braceletInformation.mode == BraceletMode.GESTURE || braceletInformation.mode == BraceletMode.GESTURE_EFFECT ? R.drawable.ic_waving_hand : R.drawable.ic_waving_hand_off);
             }
 
-            updateButtons();
+            // updateButtons();
         }
 
         previousBraceletInformation = new BraceletInformation(braceletInformation);

@@ -45,7 +45,8 @@ enum MessageType {
 enum Mode {
   MODE_NORMAL,
   MODE_EFFECT,
-  MODE_GESTURE
+  MODE_GESTURE,
+  MODE_GESTURE_EFFECT
 };
 
 enum LedStripCommandType {
@@ -180,9 +181,9 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
 
         currentMode = newMode;
 
-        if (newMode == MODE_EFFECT) {        
+        if (newMode == MODE_EFFECT || newMode == MODE_GESTURE_EFFECT) {        
           ledStripEffect = (LedStripEffectType) payload[2];
-        } else if (newMode == MODE_NORMAL) {
+        } else if (newMode == MODE_NORMAL || newMode == MODE_GESTURE) {
           ledStripEffect = LED_STRIP_EFFECT_NONE;
         }
       } break;
@@ -232,7 +233,7 @@ void loop() {
       shouldRecordGesture = false;
       recordGesture();
     } else {
-      if (currentMode == MODE_GESTURE) {
+      if (currentMode == MODE_GESTURE || currentMode == MODE_GESTURE_EFFECT) {
         updateGesture();
       }
 

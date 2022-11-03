@@ -46,7 +46,12 @@ public class LedStripCommand {
 
     public static void sendEffect(IBluetoothService bluetoothService, LedStripEffectType type) {
         byte[] data = new byte[1];
-        BraceletMode newMode = type == LedStripEffectType.NONE ? BraceletMode.NORMAL : BraceletMode.EFFECT;
+
+        BraceletMode mode = bluetoothService.getBraceletInformation().mode;
+
+        BraceletMode newMode = (mode == BraceletMode.GESTURE || mode == BraceletMode.GESTURE_EFFECT)
+            ? (type == LedStripEffectType.NONE ? BraceletMode.GESTURE : BraceletMode.GESTURE_EFFECT)
+            : (type == LedStripEffectType.NONE ? BraceletMode.NORMAL : BraceletMode.EFFECT);
 
         //Adding effect type:
         data[0] = (byte) type.getValue();
