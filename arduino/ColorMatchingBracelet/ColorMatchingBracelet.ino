@@ -426,7 +426,7 @@ void classifyGesture() {
   Serial.println("Classifying gesture...");
 
   float smallestMean = 0.35;
-  LedStripEffectType effect;
+  LedStripEffectType effect = ledStripEffect;
 
   for (int i = 0; i < recordedGesturesLength; i++) {
     float mean = dynamicTimeWarping(gesture, recordedGestures[i]);
