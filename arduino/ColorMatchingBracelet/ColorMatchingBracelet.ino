@@ -22,6 +22,9 @@
 
 #define LED_STRIP_PIN 12
 #define LED_STRIP_NUM_LEDS 10
+#define LED_STRIP_MAX_BRIGHTNESS 30
+
+#define VOLTAGE_SENSOR_PIN 25
 
 #define GESTURE_ACC_THRESHOLD 1.5
 #define GESTURE_DURATION_MS 1500
@@ -212,6 +215,8 @@ void setup() {
   //Settings variables:
   ledStripPower = false;
   batteryPercentage = 90;  //Dummy for now :)
+
+  ledStrip.setBrightness(LED_STRIP_MAX_BRIGHTNESS);
 }
 
 void panic(const String& message) {
@@ -576,7 +581,10 @@ void processLedStripCommand(uint8_t* data, uint8_t dataLength) {
       setLedStripPower(power);
     } break;
     case LED_STRIP_COMMAND_BRIGHTNESS: {
-      ledStripBrightness = (uint8_t) (((float) data[1] / 100.0) * 255.0);
+      //Bind brightness between max brightness:
+      uint8_t boundedBrightness = (uint8_t) (((float) data[1] / 100.0) * LED_STRIP_MAX_BRIGHTNESS);
+
+      ledStripBrightness = (uint8_t) (((float) boundedBrightness / 100.0) * 255.0);
 
       Serial.print("Brightness: ");
       Serial.println(ledStripBrightness);
