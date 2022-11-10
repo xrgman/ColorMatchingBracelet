@@ -24,7 +24,11 @@
 #define LED_STRIP_NUM_LEDS 10
 #define LED_STRIP_MAX_BRIGHTNESS 30
 
-#define VOLTAGE_SENSOR_PIN 25
+#define VOLTAGE_SENSOR_PIN 34
+#define VOLTAGE_SENSOR_SAMPLES 20
+
+#define BATTERY_MAX_VOLTAGE 840 //8.4 volt, 2 li-ion cells:
+#define BATTERY_MIN_VOLTAGE 600 //6.0 volt
 
 #define GESTURE_ACC_THRESHOLD 1.5
 #define GESTURE_DURATION_MS 1500
@@ -90,7 +94,11 @@ float recordedGestures[RECORDED_GESTURES_MAX][GESTURE_SIZE];
 LedStripEffectType recordedGesturesEffects[RECORDED_GESTURES_MAX];
 
 //Battery status:
-uint8_t batteryPercentage;
+uint16_t batteryTotal = 0;
+uint8_t batterySampleCount = 0;
+uint8_t batteryPercentage = 0;
+
+uint32_t last_interval_time_voltage = 0;
 
 //Storing current mode:
 Mode currentMode = MODE_NORMAL;
@@ -104,6 +112,7 @@ void calibrateAcc();
 void recordGesture();
 void processLedStripCommand(uint8_t* data, uint8_t dataLength);
 void sendStatistics();
+void readVoltage();
 
 class BleServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* bleServer) {
@@ -209,12 +218,13 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
 
+  pinMode(VOLTAGE_SENSOR_PIN, OUTPUT);
+
   setupMpu();
   setupBle();
 
   //Settings variables:
   ledStripPower = false;
-  batteryPercentage = 90;  //Dummy for now :)
 
   ledStrip.setBrightness(LED_STRIP_MAX_BRIGHTNESS);
 }
@@ -225,10 +235,7 @@ void panic(const String& message) {
 }
 
 void loop() {
-  if (!updateBle()) {
-    setLedStripColor(0, 0, 0);
-    ledStrip.show();
-  } else {
+  if (updateBle()) {
     mpu.update();
 
     if (shouldCalibrate) {
@@ -244,11 +251,45 @@ void loop() {
 
       updateCurrentEffect();
     }
-  }  
+
+    readBatteryVoltage(); 
+  }
+}
+
+/* Battery voltage */
+void readBatteryVoltage() {
+  if(millis() < last_interval_time_voltage + 20) {
+    return;
+  }
+  
+  //Reading voltage sensor:
+  int adc_value = analogRead(VOLTAGE_SENSOR_PIN);
+
+  //Converting to actual voltage:
+  float batteryVoltage = map(adc_value, 0, 4096, 0, 1650) + 60;
+
+  batteryTotal += batteryVoltage;
+  batterySampleCount++;
+
+  if(batterySampleCount >= VOLTAGE_SENSOR_SAMPLES) {
+    uint16_t averageBatteryVoltage = batteryTotal / batterySampleCount;
+
+    if(averageBatteryVoltage < BATTERY_MIN_VOLTAGE || averageBatteryVoltage > BATTERY_MAX_VOLTAGE)      
+    {
+      batteryPercentage = 0;
+    }
+    else {
+       batteryPercentage = ((float) (averageBatteryVoltage - BATTERY_MIN_VOLTAGE) / (float) (BATTERY_MAX_VOLTAGE - BATTERY_MIN_VOLTAGE)) * 100.0;
+    }
+
+    batteryTotal = 0;
+    batterySampleCount = 0;
+  }
+
+  last_interval_time_voltage = millis();
 }
 
 /* Bluetooth and Messaging */
-
 bool updateBle() {
   if (!bleDeviceConnected) {
     if (!bleIsAdvertising) {

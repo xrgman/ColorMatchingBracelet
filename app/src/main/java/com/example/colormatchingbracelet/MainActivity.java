@@ -10,6 +10,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.BlendMode;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.view.View;
 import android.widget.TextView;
@@ -45,6 +46,10 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
 
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityMainBinding binding;
+
+    private Handler handler = new Handler();
+    private Runnable runnable;
+    private final int statusRequestDelay = 30000; //Every 30 seconds
 
     private NavigationView navigationView;
 
@@ -107,12 +112,25 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
     public void onResume() {
         super.onResume();
 
+        //Request status from bracelet:
+        handler.postDelayed(runnable = new Runnable() {
+            public void run() {
+                if(bluetoothService.isConnected()) {
+                    BraceletCommand.sendStatusRequest(bluetoothService);
+                }
+
+                handler.postDelayed(runnable, statusRequestDelay);
+            }
+        }, statusRequestDelay);
+
         registerReceiver(gattUpdateReceiver, makeGattUpdateIntentFilter());
     }
 
     @Override
     public void onPause() {
         super.onPause();
+
+        handler.removeCallbacks(runnable);
 
         unregisterReceiver(gattUpdateReceiver);
     }
