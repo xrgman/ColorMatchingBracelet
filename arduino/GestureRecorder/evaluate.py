@@ -2,7 +2,13 @@ import os
 import random
 import math
 import seaborn
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
+
+num_train_samples = 1
+threshold = 0.25
+dtw_window = 50
+
+# thresholds: 0.15, 0.2, ...
 
 def read_gesture(path):
     with open(path, "r") as file:
@@ -20,6 +26,16 @@ square_ccw = [('square_ccw', read_gesture('gestures/' + path)) for path in paths
 triangle_cw = [('triangle_cw', read_gesture('gestures/' + path)) for path in paths if path.startswith('triangle_cw')]
 junk = [('junk', read_gesture('gestures/' + path)) for path in paths if path.startswith('junk')]
 
+def fir_lowpass_first(a):
+    q = 0.95 
+    b = [a[0]]
+    for i in range(1, len(a)):
+        x = (1.0 - q) * a[i - 1][0] + q * a[i][0]
+        y = (1.0 - q) * a[i - 1][1] + q * a[i][1]
+        z = (1.0 - q) * a[i - 1][2] + q * a[i][2]
+        b.append([x, y, z])
+    return b
+
 def calc_distance(a, b) -> float:
     ax = a[0]
     ay = a[1]
@@ -35,6 +51,9 @@ def normalize(x, y, z) -> float:
     return math.sqrt(x * x + y * y + z * z)
 
 def calc_dtw(a, b) -> float:
+    a = fir_lowpass_first(a)
+    b = fir_lowpass_first(b)
+
     dtw = [[0.0 for _ in range(50)] for _ in range(50)]
     dtw[0][0] = calc_distance(a[0], b[0])
 
@@ -52,10 +71,10 @@ def calc_dtw(a, b) -> float:
     length = 0
 
     while i > 0 and j > 0:
-        if dtw[i - 1][j] <= dtw[i][j - 1] and dtw[i - 1][j] <= dtw[i - 1][j - 1]:
+        if dtw[i - 1][j] <= dtw[i][j - 1] and dtw[i - 1][j] <= dtw[i - 1][j - 1] and (j - i) <= dtw_window:
             distance[length] = dtw[i][j] - dtw[i - 1][j]
             i -= 1
-        elif dtw[i][j - 1] < dtw[i - 1][j - 1]:
+        elif dtw[i][j - 1] < dtw[i - 1][j - 1] and (i - j) <= dtw_window:
             distance[length] = dtw[i][j] - dtw[i][j - 1]
             j -= 1
         else:
@@ -86,9 +105,6 @@ def calc_dtw(a, b) -> float:
 
     return mean
 
-num_train_samples = 1
-threshold = 0.35
-
 confusion_matrix = {}
 num_trails = {}
 
@@ -99,7 +115,7 @@ for true_label in labels:
     for predicted_label in labels:
         confusion_matrix[true_label][predicted_label] = 0.0
 
-for _ in range(20):
+for _ in range(25):
     random.shuffle(circle_ccw)
     random.shuffle(circle_cw)
     random.shuffle(heart_cw)
