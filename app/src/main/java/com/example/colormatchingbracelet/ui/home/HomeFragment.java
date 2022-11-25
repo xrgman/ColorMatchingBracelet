@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -23,6 +24,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
@@ -255,7 +257,7 @@ public class HomeFragment extends Fragment {
     //Todo make lists
     private void setLedStripControlsEnabled(boolean enabled) {
         brightnessSlider.setEnabled(enabled);
-        colorScanButton.setEnabled(enabled);
+        colorScanButton.setEnabled(true);
         reactToGesturesButton.setEnabled(enabled);
 
         //Effect buttons:
@@ -341,12 +343,13 @@ public class HomeFragment extends Fragment {
         //Setting up camera preview:
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(getActivity());;
         PreviewView previewView = layout.findViewById(R.id.previewView);
+        androidx.camera.core.Camera[] cameras = {null};
 
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
 
-                bindPreview(cameraProvider, previewView);
+                cameras[0] = bindPreview(cameraProvider, previewView);
 
             } catch (ExecutionException | InterruptedException e) {
                 //Should not happen :)
@@ -364,12 +367,43 @@ public class HomeFragment extends Fragment {
                 //Grab current image and extract color:
                 Bitmap current = previewView.getBitmap();
 
-                selectedColor = current.getPixel(x, y);
+                int nrOfSamp = 0;
+                int red = 0, green = 0, blue = 0;
+
+                for(int x_axis = x - 10; x_axis <= x + 10; x_axis++) {
+                    for(int y_axis = y - 10; y_axis <= y + 10; y_axis++) {
+                        int pixel = current.getPixel(x_axis, y_axis);
+
+                        red += Color.red(pixel);
+                        green += Color.green(pixel);
+                        blue += Color.blue(pixel);
+                        nrOfSamp++;
+                    }
+                }
+
+                selectedColor = Color.rgb(red/nrOfSamp, green/nrOfSamp, blue/nrOfSamp);
+
+                //selectedColor = current.getPixel(x, y);
 
                 currentColorView.setBackgroundColor(selectedColor);
             }
 
             return false;
+        });
+
+        //Register flash button
+        Button flashButton = layout.findViewById(R.id.enableFlashButton);
+        flashButton.setOnClickListener(view -> {
+            Camera camera = cameras[0];
+
+            if(camera != null) {
+                //Check current torch status:
+                int flashEnabled = camera.getCameraInfo().getTorchState().getValue();
+
+                camera.getCameraControl().enableTorch(flashEnabled <= 0);
+
+                flashButton.setTextColor(flashEnabled <= 0 ? Color.GREEN : Color.RED);
+            }
         });
 
         //Register set color button:
@@ -395,7 +429,7 @@ public class HomeFragment extends Fragment {
         dialog.show();
     }
 
-    void bindPreview(@NonNull ProcessCameraProvider cameraProvider, PreviewView previewView) {
+    androidx.camera.core.Camera  bindPreview(@NonNull ProcessCameraProvider cameraProvider, PreviewView previewView) {
         Preview preview = new Preview.Builder()
                 .build();
 
@@ -405,6 +439,6 @@ public class HomeFragment extends Fragment {
 
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
-        cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
+        return cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview);
     }
 }

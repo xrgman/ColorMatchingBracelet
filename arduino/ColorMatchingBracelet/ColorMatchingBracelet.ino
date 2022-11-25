@@ -222,11 +222,7 @@ void setup() {
 
   setupMpu();
   setupBle();
-
-  //Settings variables:
-  ledStripPower = false;
-
-  ledStrip.setBrightness(LED_STRIP_MAX_BRIGHTNESS);
+  setupLedStrip();
 }
 
 void panic(const String& message) {
@@ -301,6 +297,20 @@ bool updateBle() {
   }
 
   return true;
+}
+
+void setupLedStrip() {
+  //Settings variables:
+  ledStripPower = false;
+
+  //Turning it off:
+  for(int i = 0; i < ledStrip.numPixels(); i++) {
+    ledStrip.setPixelColor(i, ledStrip.Color(0, 0, 0));
+  }
+
+  ledStrip.setBrightness(LED_STRIP_MAX_BRIGHTNESS);
+
+  ledStrip.show();
 }
 
 void setupBle() {

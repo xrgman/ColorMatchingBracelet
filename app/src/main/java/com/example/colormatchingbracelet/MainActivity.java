@@ -113,14 +113,12 @@ public class MainActivity extends AppCompatActivity implements IBluetoothService
         super.onResume();
 
         //Request status from bracelet:
-        handler.postDelayed(runnable = new Runnable() {
-            public void run() {
-                if(bluetoothService.isConnected()) {
-                    BraceletCommand.sendStatusRequest(bluetoothService);
-                }
-
-                handler.postDelayed(runnable, statusRequestDelay);
+        handler.postDelayed(runnable = () -> {
+            if(bluetoothService.isConnected()) {
+                BraceletCommand.sendStatusRequest(bluetoothService);
             }
+
+            handler.postDelayed(runnable, statusRequestDelay);
         }, statusRequestDelay);
 
         registerReceiver(gattUpdateReceiver, makeGattUpdateIntentFilter());
