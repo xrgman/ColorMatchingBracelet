@@ -41,6 +41,7 @@ import com.example.colormatchingbracelet.LedStrip.LedStripCommand;
 import com.example.colormatchingbracelet.LedStrip.LedStripEffectType;
 import com.example.colormatchingbracelet.MainActivity;
 import com.example.colormatchingbracelet.R;
+import com.example.colormatchingbracelet.Utils;
 import com.example.colormatchingbracelet.bluetooth.BluetoothService;
 import com.example.colormatchingbracelet.bluetooth.IBluetoothService;
 import com.example.colormatchingbracelet.databinding.FragmentHomeBinding;
@@ -360,30 +361,24 @@ public class HomeFragment extends Fragment {
         //Click event, select color clicked by the user:
         previewView.setOnTouchListener((view, motionEvent) -> {
             if(motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
-                //TODO: take a bit larger area and take average color of that :)
                 int x = (int) motionEvent.getX();
                 int y = (int) motionEvent.getY();
 
                 //Grab current image and extract color:
                 Bitmap current = previewView.getBitmap();
 
-                int nrOfSamp = 0;
-                int red = 0, green = 0, blue = 0;
-
-                for(int x_axis = x - 10; x_axis <= x + 10; x_axis++) {
-                    for(int y_axis = y - 10; y_axis <= y + 10; y_axis++) {
-                        int pixel = current.getPixel(x_axis, y_axis);
-
-                        red += Color.red(pixel);
-                        green += Color.green(pixel);
-                        blue += Color.blue(pixel);
-                        nrOfSamp++;
-                    }
-                }
-
-                selectedColor = Color.rgb(red/nrOfSamp, green/nrOfSamp, blue/nrOfSamp);
-
+                //Approach 0:
                 //selectedColor = current.getPixel(x, y);
+
+                //Approach 1:
+                //selectedColor = Utils.getColorRegionRgb(current, x, y);
+
+                //Approach 2:
+                //selectedColor = Utils.getColorRegionHsvMaxV(current, x, y);
+
+                //Approach 3:
+                selectedColor = Utils.getColorRgbMapColors(current, x, y);
+
 
                 currentColorView.setBackgroundColor(selectedColor);
             }

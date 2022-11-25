@@ -49,5 +49,89 @@ public class Utils {
 //        return Color.valueOf(redBucket / pixels.length, greenBucket / pixels.length,blueBucket / pixels.length, 100.0f);
 //    }
 
+    public static int getColorRegionRgb(Bitmap image, int x, int y) {
+        int nrOfSamp = 0;
+        int red = 0, green = 0, blue = 0;
+
+        for(int x_axis = x - 10; x_axis <= x + 10; x_axis++) {
+            for(int y_axis = y - 10; y_axis <= y + 10; y_axis++) {
+                int pixel = image.getPixel(x_axis, y_axis);
+
+                red += Color.red(pixel);
+                green += Color.green(pixel);
+                blue += Color.blue(pixel);
+                nrOfSamp++;
+            }
+        }
+
+        return Color.rgb(red/nrOfSamp, green/nrOfSamp, blue/nrOfSamp);
+    }
+
+    public static int getColorRegionHsvMaxV(Bitmap image, int x, int y) {
+        int nrOfSamp = 0;
+        float h = 0.0f, s = 0.0f, v = 0.0f;
+
+        for(int x_axis = x - 10; x_axis <= x + 10; x_axis++) {
+            for(int y_axis = y - 10; y_axis <= y + 10; y_axis++) {
+                int pixel = image.getPixel(x_axis, y_axis);
+                float[] hsv = new float[3];
+
+                Color.colorToHSV(pixel, hsv);
+
+                h += hsv[0];
+                s += hsv[1];
+                v += hsv[2];
+
+                nrOfSamp++;
+            }
+        }
+
+       return Color.HSVToColor(255, new float[] {h/nrOfSamp, s/nrOfSamp, 1.0f});
+    }
+
+    public static int getColorRgbMapColors(Bitmap image, int x, int y) {
+        int nrOfSamp = 0;
+        int red = 0, green = 0, blue = 0;
+
+        for(int x_axis = x - 10; x_axis <= x + 10; x_axis++) {
+            for(int y_axis = y - 10; y_axis <= y + 10; y_axis++) {
+                int pixel = image.getPixel(x_axis, y_axis);
+
+                red += Color.red(pixel);
+                green += Color.green(pixel);
+                blue += Color.blue(pixel);
+                nrOfSamp++;
+            }
+        }
+
+        int averageRed = red/nrOfSamp;
+        int averageGreen = green/nrOfSamp;
+        int averageBlue = blue/nrOfSamp;
+
+        int maxDiff = 20;
+
+        //Check if colors are close to eachother:
+        if(Math.abs(averageRed - averageGreen) < maxDiff
+            && Math.abs(averageRed - averageBlue) < maxDiff
+            && Math.abs(averageGreen - averageBlue) < maxDiff) {
+
+            if(averageRed + averageBlue + averageGreen < 600) {
+                //This is probably a grey scale color, which looks horrible on the ledstrip
+                averageRed = averageGreen = averageBlue = 0;
+            }
+        }
+
+        averageRed = 165;
+        averageGreen = 42;
+        averageBlue = 42;
+
+
+        //Remap probably black to off:
+
+
+
+        return Color.rgb(averageRed, averageGreen, averageBlue);
+    }
+
 
 }
