@@ -9,6 +9,8 @@
 
 #include <Adafruit_NeoPixel.h>
 
+#include <SPIFFS.h>
+
 #define EEPROM_ADDR_ACC_BIAS_X 0x00
 #define EEPROM_ADDR_ACC_BIAS_Y 0x04
 #define EEPROM_ADDR_ACC_BIAS_Z 0x08
@@ -207,7 +209,7 @@ class BleCharacteristicCallbacks : public BLECharacteristicCallbacks {
         recordedGesturesEffects[recordedGesturesLength] = (LedStripEffectType) payload[0];
       } break;
       case MESSAGE_REMOVE_GESTURE: {
-
+        
       } break;
     }      
   }
@@ -223,6 +225,26 @@ void setup() {
   setupMpu();
   setupBle();
   setupLedStrip();
+
+  SPIFFS.begin(true);
+
+  auto file = SPIFFS.open("/gestures", "w+");
+  recordedGesturesLength = file.size() / 601;
+
+  for (int i = 0; i < recordedGesturesLength; i++) {
+    char ty;
+    file.readBytes(&ty, 1);
+    recordedGesturesEffects[i] = (LedStripEffectType) ty;
+    file.readBytes((char*) recordedGestures[i], 600);
+  }
+
+  file.close();
+
+  Serial.print("num gestures: ");
+  Serial.println(recordedGesturesLength);
+
+  // uncomment to remove all gesture from the FS
+  // SPIFFS.remove("/gestures");
 }
 
 void panic(const String& message) {
@@ -394,9 +416,7 @@ void sendStatistics() {
   dataToSend[2] = (uint8_t) (ledStripPower ? '1' : '0'); 
   dataToSend[3] = ledStripEffect;
   dataToSend[4] = ledStripBrightness;
-
-  //Colors todo dit ff nakijken:
-  dataToSend[5] = LED_STRIP_NUM_LEDS;  //First we send length
+  dataToSend[5] = recordedGesturesLength;
   
   sendMessage(MESSAGE_STATISTICS, dataToSend, size);
 }
@@ -481,7 +501,7 @@ void updateGesture() {
 void classifyGesture() {
   Serial.println("Classifying gesture...");
 
-  float smallestMean = 0.35;
+  float smallestMean = 1.0;
   LedStripEffectType effect = ledStripEffect;
 
   for (int i = 0; i < recordedGesturesLength; i++) {
@@ -496,7 +516,7 @@ void classifyGesture() {
     }
   }
 
-  if (smallestMean < 0.35) {
+  if (smallestMean <= 0.35) {
     ledStripEffect = effect;
   }
 }
@@ -611,7 +631,15 @@ void recordGesture() {
 
   Serial.println("Recorded gesture");
 
+  auto file = SPIFFS.open("/gestures", "a");
+  file.write((uint8_t*) &recordedGesturesEffects[recordedGesturesLength], 1);
+  file.write((uint8_t*) recordedGestures[recordedGesturesLength], 600);
+  file.close();
+
   recordedGesturesLength++;
+
+  Serial.print("num gestures: ");
+  Serial.println(recordedGesturesLength);
 
   setLedStripColor(0, 0, 0);
   ledStrip.show();

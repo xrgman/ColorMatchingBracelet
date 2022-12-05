@@ -157,33 +157,33 @@ public class SettingsFragment extends Fragment implements BluetoothConnectionCal
             });
 
             rainbowEffectSettingsButton.setOnClickListener(view -> {
-                FragmentManager fragmentManager = getParentFragmentManager();
-                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.RAINBOW, "Rainbow");
-                fragment.show(fragmentManager, "rainbow");
+                byte[] data = new byte[1];
+                data[0] = (byte) LedStripEffectType.RAINBOW.getValue();
+                bluetoothServiceLink.sendMessage(MessageType.ADD_GESTURE, data);
             });
 
             trailEffectSettingsButton.setOnClickListener(view -> {
-                FragmentManager fragmentManager = getParentFragmentManager();
-                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.TRAIL, "Trail");
-                fragment.show(fragmentManager, "trail");
+                byte[] data = new byte[1];
+                data[0] = (byte) LedStripEffectType.TRAIL.getValue();
+                bluetoothServiceLink.sendMessage(MessageType.ADD_GESTURE, data);
             });
 
             circleEffectSettingsButton.setOnClickListener(view -> {
-                FragmentManager fragmentManager = getParentFragmentManager();
-                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.CIRCLE, "Circle");
-                fragment.show(fragmentManager, "circle");
+                byte[] data = new byte[1];
+                data[0] = (byte) LedStripEffectType.CIRCLE.getValue();
+                bluetoothServiceLink.sendMessage(MessageType.ADD_GESTURE, data);
             });
 
             compassEffectSettingsButton.setOnClickListener(view -> {
-                FragmentManager fragmentManager = getParentFragmentManager();
-                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.COMPASS, "Compass");
-                fragment.show(fragmentManager, "compass");
+                byte[] data = new byte[1];
+                data[0] = (byte) LedStripEffectType.COMPASS.getValue();
+                bluetoothServiceLink.sendMessage(MessageType.ADD_GESTURE, data);
             });
 
             fadeEffectSettingsButton.setOnClickListener(view -> {
-                FragmentManager fragmentManager = getParentFragmentManager();
-                EffectSettingsFragment fragment = EffectSettingsFragment.newInstance(bluetoothServiceLink, LedStripEffectType.FADE, "Fade");
-                fragment.show(fragmentManager, "fade");
+                byte[] data = new byte[1];
+                data[0] = (byte) LedStripEffectType.FADE.getValue();
+                bluetoothServiceLink.sendMessage(MessageType.ADD_GESTURE, data);
             });
         }
         else{

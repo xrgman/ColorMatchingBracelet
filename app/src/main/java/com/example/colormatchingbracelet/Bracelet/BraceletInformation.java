@@ -12,6 +12,7 @@ public class BraceletInformation {
     public boolean ledStripPowerState;
     public int ledStripBrightness;
     public LedStripEffectType ledStripEffectCurrent;
+    public int numGestures;
 
     public List<Color> ledStripColors;
 
@@ -21,6 +22,7 @@ public class BraceletInformation {
         ledStripPowerState = false;
         ledStripBrightness = 255;
         ledStripEffectCurrent = LedStripEffectType.NONE;
+        numGestures = 0;
     }
 
     public BraceletInformation(BraceletInformation old) {
@@ -29,5 +31,6 @@ public class BraceletInformation {
         ledStripPowerState = old.ledStripPowerState;
         ledStripBrightness = old.ledStripBrightness;
         ledStripEffectCurrent = old.ledStripEffectCurrent;
+        numGestures = old.numGestures;
     }
 }

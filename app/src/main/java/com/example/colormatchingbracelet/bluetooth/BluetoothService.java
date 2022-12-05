@@ -362,14 +362,7 @@ public class BluetoothService extends Service implements IBluetoothService {
         newBraceletInfo.ledStripPowerState = data[2] == '1';
         newBraceletInfo.ledStripEffectCurrent = LedStripEffectType.values()[data[3]];
         newBraceletInfo.ledStripBrightness = data[4];
-
-
-//        if(braceletInformation.ledStripBrightness == 0) {
-//            int x = 0;
-//        }
-
-        //Extracting current color information:
-        int numOfPixels = data[4];
+        newBraceletInfo.numGestures = data[5];
 
         updateBraceletInformation(newBraceletInfo);
     }
